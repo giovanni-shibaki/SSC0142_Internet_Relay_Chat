@@ -6,20 +6,24 @@
 # 
 # @copyright Copyright (c) 2021
 
-UTILS= utils/fileManager.c
-REGISTRY= registry/linha.c registry/veiculo.c
-INDEX = index/index.c
-MERGE = merge/merge.c
-MAIN= main.c
-BINARY= main
+LIB = lib/clientManager.cpp lib/messageManager.cpp
+SERVER_MAIN = src/server.cpp
+CLIENT_MAIN = src/client.cpp
+SERVER_BINARY = server
+CLIENT_BINARY = client
 
-FLAGS = -Werror 
+FLAGS = -Werror
 FLAGS2 = -Werror -Wall -Wextra -Wpedantic -Wpointer-arith -O3 -march=native
 VFLAGS= --leak-check=full --show-leak-kinds=all --track-origins=yes
 
-all:
-	@gcc $(FLAGS) $(MAIN) $(UTILS) $(REGISTRY) $(INDEX) $(MERGE) -o $(BINARY) -lm -I utils/ -I registry/ -I index/
-
+client:
+	@g++ $(FLAGS) $(CLIENT_MAIN) $(LIB) -o $(CLIENT_BINARY) -lm -I src/ -I lib/
+server:
+	@g++ $(FLAGS) $(SERVER_MAIN) $(LIB) -o $(SERVER_BINARY) -lm -I src/ -I lib/
+run_client:
+	./$(CLIENT_BINARY)
+run_server:
+	./$(SERVER_BINARY)
 run:
 	./$(BINARY)
 

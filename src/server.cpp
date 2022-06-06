@@ -40,6 +40,25 @@ using namespace std;
 // Struct que guarda as informações sobre as conexões
 struct sockaddr_in address;
 
+string receiveMessage()
+{
+       string message = "";
+       char buffer[MAX];
+       while (true)
+       {
+              read(socket, buffer, MAX);
+              for (int i = 0; i < MAX; i++)
+              {
+                     if (buffer[i] == '\0')
+                     {
+                            return message;
+                     }
+                     message += buffer[i];
+              }
+              bzero(buffer, MAX);
+       }
+}
+
 /**
  * @brief Função que aceita novas conexões no socket
  * 
@@ -76,9 +95,9 @@ void listenSocket(int socket)
               bzero(buffer, MAX);
 
               // Ler a mensagem do cliente e colocar no buffer
-              read(socket, buffer, sizeof(buffer));
+              string message = receiveMessage();
 
-              printf("Mensagem recebida do cliente: %s\n", buffer);
+              cout << "Mensagem recebida do cliente: " << message << endl;
               bzero(buffer, MAX);
               n = 0;
 
@@ -98,6 +117,7 @@ void listenSocket(int socket)
 
 int main()
 {
+       cout << "aAAAAAA";
        int connectionFd;
        int clientSockets[MAX_CLIENTS];
 

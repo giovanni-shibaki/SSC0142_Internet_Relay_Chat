@@ -42,29 +42,46 @@ int addrLen;
 // Struct que guarda as informações sobre as conexões
 struct sockaddr_in address;
 
+
+void sendMessage(string message)
+{
+    int messageSize = message.length();
+    int nSplittedMessages = (messageSize + 1) / MAX + 1;
+    char splittedMessages[nSplittedMessages][MAX];
+    int i;
+    for (i = 0; i < messageSize; i++)
+    {
+        splittedMessages[i / MAX][i % MAX];
+    }
+    splittedMessages[nSplittedMessages][i % MAX] = '\0'; 
+
+    for (i = 0; i < nSplittedMessages; i++)
+    {
+        send(clientSocket, splittedMessages[i], MAX, MSG_NOSIGNAL);        
+    }
+}
+
 /**
  * @brief Função do cliente para mandar mensagens ao servidor
  *
  */
+
 void listenSocket(int socket)
 {
-    char message[MAX];
     int n;
+    string buffer;
 
     while (TRUE)
     {
         // Zerando o message para receber uma nova mensagem
         bzero(message, MAX);
 
-        printf("Digite a mensagem a ser enviada: ");
+        cout << "Digite a mensagem a ser enviada: ";
         n = 0;
 
         // Ler a mensagem a ser enviada
-        cin >> message;
-
-        // Enviar a mensagem para o servidor conectado
-        send(clientSocket, message, sizeof(message), MSG_NOSIGNAL);
-        bzero(message, MAX);
+        cin >> buffer;
+        sendMessage(buffer);
 
         // Recebe a mensagem de volta do servidor
         cout << "Esperando resposta do servidor..." << endl;
@@ -73,7 +90,7 @@ void listenSocket(int socket)
         cout << "Mensagem recebida do servidor: " << message << endl;
         if ((strncmp(message, "exit", 4)) == 0) 
         {
-            printf("Client exit...\n");
+            cout << "Client exit..." << endl;
             break;
         }
     }
@@ -81,17 +98,18 @@ void listenSocket(int socket)
 
 int main()
 {
+    cout << "AAAAAAAAAAAAA";
     int connectionFd;
 
     // Criação do socket
     if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     {
-        printf("Falha ao criar socket!\n");
+        cout << "Falha ao criar socket!" << endl;
         exit(0);
     }
     else
     {
-        printf("Socket criado com sucesso!\n");
+        cout << "Socket criado com sucesso!" << endl;
     }
 
     // Limpar a variável myself para inclusão do IP e da porta
@@ -106,12 +124,12 @@ int main()
     // Associar o socket criado com o IP
     if ((connect(clientSocket, (struct sockaddr *)&address, sizeof(address))) < 0)
     {
-        printf("Erro ao associar o socket criado com o IP definido!\n");
+        cout << "Erro ao associar o socket criado com o IP definido!" << endl;
         exit(0);
     }
     else
     {
-        printf("O socket foi associado ao IP definido com sucesso!\n");
+        cout << "O socket foi associado ao IP definido com sucesso!" << endl;
     }
 
     listenSocket(clientSocket);

@@ -14,12 +14,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <iostream>
 
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <math.h>
 
 #include <thread>
 #include <mutex>
@@ -27,10 +29,11 @@
 #define TRUE 1
 #define FALSE 0
 
-#define PORT 3002
+#define PORT 42069
 #define LOCALIP "127.0.0.1"
 #define MAX 4096
 #define MAX_CLIENTS 10
+#define READLINE_BUFFER 4096 // Buffer utilizado na função readline();
 
 int serverSocket;
 int addrLen;
@@ -40,44 +43,106 @@ using namespace std;
 // Struct que guarda as informações sobre as conexões
 struct sockaddr_in address;
 
-string receiveMessage()
+/**
+ * @brief Le uma linha ate o \0
+ *
+ * @param stream
+ * @return char*
+ */
+char *readLine(FILE *stream)
 {
-       string message = "";
-       char buffer[MAX];
-       while (true)
+       char *string = NULL;
+       int pont = 0;
+       do
        {
-              read(socket, buffer, MAX);
-              for (int i = 0; i < MAX; i++)
+              if (pont % READLINE_BUFFER == 0) // Se o ponteiro for divisivel pelo buffer ou é 0 é preciso alocar mais memória HEAP para receber a string
               {
-                     if (buffer[i] == '\0')
-                     {
-                            return message;
-                     }
-                     message += buffer[i];
+                     string = (char *)realloc(string, ((pont / READLINE_BUFFER) + 1) * READLINE_BUFFER);
               }
-              bzero(buffer, MAX);
-       }
+              string[pont] = (char)fgetc(stream);                             // Recebe um dos caracteres da string
+       } while (string[pont++] != '\n' && !feof(stream));                     // A condição de parada é achar o \n ou encontrar o marcador de fim de arquivo
+       string[pont - 1] = '\0';                                               // Insere o terminador de string
+       string = (char *)realloc(string, (strlen(string) + 1) * sizeof(char)); // Ajusta o tamanho da memória para exatamente o tamanho da string recebida
+       return string;
 }
 
 /**
- * @brief Função que aceita novas conexões no socket
+ * @brief Função utilizada para o recebimento de mensagens
+ * Caso a mensagem seja maior do que 4096 será dividida e irá checar por flags de fim de mensagem
+ * (no caso \r\n conforme consta na especificação do protocolo) para então ler e mostrar a mensagem dividida
  * 
- * @return int 
+ * @param socket 
  */
-int acceptNewSockets()
+void receiveMessage(int socket)
 {
-       int newSocket; // Variável utilizada para aceitar novas conexões de sockets cliente
-       newSocket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t *)&addrLen);
-       if (newSocket < 0)
+       char *buffer = NULL;
+
+       // Aloca o buffer para receber a mensagem
+       buffer = (char *)malloc(MAX * sizeof(char));
+
+       cout << "Mensagem recebida do cliente: ";
+       while (true)
        {
-              printf("Erro ao aceitar conexão!\n");
-              exit(0);
+              read(socket, buffer, MAX);
+              // Checar se há as flags de fim de mensagem, se não houver a mensagem é maior do que 4096 e será dividida em várias
+              if (buffer[MAX - 1] == '\n' && buffer[MAX - 2] == '\r')
+              {
+                     // Acabou
+                     cout << buffer << endl;
+                     break;
+              }
+              else
+              {
+                     // Ainda há mensagens para enviar
+                     cout << buffer;
+              }
        }
-       else
+       free(buffer);
+       buffer = NULL;
+}
+
+/**
+ * @brief Função utilizada para o envio de mensagens
+ * Caso a mensagem tenha tamanho maior que 4096, irá divir em várias mensagens
+ * 
+ * @param socket 
+ */
+void sendMessage(int socket)
+{
+       char *buffer = NULL;
+       cout << "Digite a mensagem a ser enviada: ";
+       buffer = readLine(stdin);
+
+       // Verificar se o tamanho da mensagem enviada é maior do que 4096, se for maior
+       // deve dividir a mensagem e enviar em partes separadas de até 4096 caracteres
+
+       int numVezes = ((strlen(buffer) + 1) / 4096) + 1;
+       for (int i = 0; i < numVezes; i++)
        {
-              printf("Cliente aceito...\n");
+              // Dividir a mensagem em um bloco de até 4096 caracteres
+              char *temp = (char *)malloc(MAX * sizeof(char));
+
+              // Checar se não é a última mensagem da sequencia
+              if ((i + 1) >= numVezes)
+              {
+                     int num = strlen(&buffer[i * (MAX)]) + 1;
+                     strncpy(temp, &buffer[i * (MAX)], num);
+
+                     // Adicionar o \r\n indicando a finalização
+                     temp[MAX - 2] = '\r';
+                     temp[MAX - 1] = '\n';
+              }
+              else
+              {
+                     strncpy(temp, &buffer[i * (MAX)], MAX);
+              }
+              send(socket, temp, MAX, MSG_NOSIGNAL);
+
+              free(temp);
+              temp = NULL;
        }
-       return newSocket;
+       free(buffer);
+       buffer = NULL;
 }
 
 /**
@@ -86,38 +151,42 @@ int acceptNewSockets()
  */
 void listenSocket(int socket)
 {
-       char buffer[MAX];
+       char *buffer = NULL;
        int n;
 
-       while(TRUE)
+       while (TRUE)
        {
-              // Zerando o buffer para receber uma nova mensagem
-              bzero(buffer, MAX);
+              // Recebendo a mensagem
+              receiveMessage(socket);
 
-              // Ler a mensagem do cliente e colocar no buffer
-              string message = receiveMessage();
-
-              cout << "Mensagem recebida do cliente: " << message << endl;
-              bzero(buffer, MAX);
-              n = 0;
-
-              printf("Digite sua resposta ao cliente: ");
-              while((buffer[n++] = getchar()) != '\n');
-
-              // Mandar uma mensagem de resposta para o usuário
-              send(socket, buffer, sizeof(buffer), MSG_NOSIGNAL);
-
-              if(strncmp("exit", buffer, 4) == 0)
-              {
-                     printf("Server exit...\n");
-                     break;
-              }
+              // Enviando a mensagem
+              sendMessage(socket);
        }
+}
+
+/**
+ * @brief Função que aceita novas conexões no socket
+ *
+ * @return int
+ */
+int acceptNewSockets()
+{
+       int newSocket; // Variável utilizada para aceitar novas conexões de sockets cliente
+       newSocket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t *)&addrLen);
+       if (newSocket < 0)
+       {
+              cout << "Erro ao aceitar conexão!" << endl;
+              exit(0);
+       }
+       else
+       {
+              cout << "Cliente aceito..." << endl << endl;
+       }
+       return newSocket;
 }
 
 int main()
 {
-       cout << "aAAAAAA";
        int connectionFd;
        int clientSockets[MAX_CLIENTS];
 
@@ -129,50 +198,40 @@ int main()
        // Criação do socket
        if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
        {
-              printf("Falha ao criar socket!\n");
+              cout << "Falha ao criar socket!" << endl;
               exit(0);
        }
        else
        {
-              printf("Socket criado com sucesso!\n");
+              cout << "Socket criado com sucesso!" << endl;
        }
-
-       // Permitindo que o socket do servidor aceite multiplas conexões
-       /*if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, (char *)TRUE, sizeof(TRUE)) < 0)
-       {
-              printf("Falha ao configurar socket!\n");
-              exit(0);
-       }*/
-
-       // Limpar a variável myself para inclusão do IP e da porta
-       //bzero(&serverSocket, sizeof(serverSocket));
 
        // Associando IP e Porta para o servidor
        address.sin_family = AF_INET;
-       //address.sin_addr.s_addr = htonl(INADDR_ANY);
        address.sin_port = htons(PORT);
        inet_aton(LOCALIP, &(address.sin_addr));
+
        // Associar o socket criado com o IP
        if ((bind(serverSocket, (struct sockaddr *)&address, sizeof(address))) != 0)
        {
-              printf("Erro ao associar o socket criado com o IP definido!\n");
+              cout << "Erro ao associar o socket criado com o IP definido!" << endl;
               exit(0);
        }
        else
        {
-              printf("O socket foi associado ao IP definido com sucesso!\n");
+              cout << "O socket foi associado ao IP definido com sucesso!" << endl;
        }
 
        // Agora, o servidor irá escutar por novas coneções
        // Até 5 conexões pendentes
        if ((listen(serverSocket, 5)) < 0)
        {
-              printf("Erro ao escutar na porta definida!\n");
+              cout << "Erro ao escutar na porta definida!" << endl;
               exit(0);
        }
        else
        {
-              printf("Escutando por conexões na porta definida...\n");
+              cout << "Escutando por conexões na porta definida..." << endl;
        }
        addrLen = sizeof(address);
 
@@ -188,110 +247,3 @@ int main()
        // Depois de sair da função listenSocket encerrar a conexão
        close(serverSocket);
 }
-
-// Criar uma struct com as informações de cada cliente
-// Criar uma struct com as informações de cada canal de voz
-
-// Cada cliente conectado irá ficar em uma thread própria ouvindo o que ele fala
-// Quando ele fala, verificar se é um comando, se não for um comando, mandar a mensagem para todos
-// os clientes que estão no mesmo canal dele
-
-// Thread específica para o envio das mensagens, que pega as mensagens dentro da lista de mensagens
-// e envia para todos os usuários que estão conectados no mesmo canal
-
-// #include <stdio.h>
-// #include <netdb.h>
-// #include <netinet/in.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include <sys/socket.h>
-// #include <sys/types.h>
-// #define MAX 80
-// #define PORT 8080
-// #define SA struct sockaddr
-
-// // Function designed for chat between client and server.
-// void func(int connfd)
-// {
-//     char buff[MAX];
-//     int n;
-//     // infinite loop for chat
-//     for (;;) {
-//         bzero(buff, MAX);
-
-//         // read the message from client and copy it in buffer
-//         read(connfd, buff, sizeof(buff));
-//         // print buffer which contains the client contents
-//         printf("From client: %s\t To client : ", buff);
-//         bzero(buff, MAX);
-//         n = 0;
-//         // copy server message in the buffer
-//         while ((buff[n++] = getchar()) != '\n')
-//             ;
-
-//         // and send that buffer to client
-//         write(connfd, buff, sizeof(buff));
-
-//         // if msg contains "Exit" then server exit and chat ended.
-//         if (strncmp("exit", buff, 4) == 0) {
-//             printf("Server Exit...\n");
-//             break;
-//         }
-//     }
-// }
-
-// // Driver function
-// int main()
-// {
-//     int sockfd, connfd, len;
-//     struct sockaddr_in servaddr, cli;
-
-//     // socket create and verification
-//     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-//     if (sockfd == -1) {
-//         printf("socket creation failed...\n");
-//         exit(0);
-//     }
-//     else
-//         printf("Socket successfully created..\n");
-//     bzero(&servaddr, sizeof(servaddr));
-
-//     // assign IP, PORT
-//     servaddr.sin_family = AF_INET;
-//     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-//     servaddr.sin_port = htons(PORT);
-
-//     // Binding newly created socket to given IP and verification
-//     if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) {
-//         printf("socket bind failed...\n");
-//         exit(0);
-//     }
-//     else
-//         printf("Socket successfully binded..\n");
-
-//     // Now server is ready to listen and verification
-//     if ((listen(sockfd, 5)) != 0) {
-//         printf("Listen failed...\n");
-//         exit(0);
-//     }
-//     else
-//         printf("Server listening..\n");
-//     len = sizeof(cli);
-
-//     // Accept the data packet from client and verification
-
-// As informações do socket do cliente conectado fica nesse int conffd
-//     connfd = accept(sockfd, (SA*)&cli, &len);
-//     if (connfd < 0) {
-//         printf("server accept failed...\n");
-//         exit(0);
-//     }
-//     else
-//         printf("server accept the client...\n");
-
-//     // Function for chatting between client and server
-//     func(connfd);
-
-//     // After chatting close the socket
-//     close(sockfd);
-// }

@@ -16,20 +16,16 @@ FLAGS = -Werror
 FLAGS2 = -Werror -Wall -Wextra -Wpedantic -Wpointer-arith -O3 -march=native
 VFLAGS= --leak-check=full --show-leak-kinds=all --track-origins=yes
 
-client:
-	@g++ $(FLAGS) $(CLIENT_MAIN) $(LIB) -o $(CLIENT_BINARY) -lm -I src/ -I lib/
-server:
-	@g++ $(FLAGS) $(SERVER_MAIN) $(LIB) -o $(SERVER_BINARY) -lm -I src/ -I lib/
+all:
+	@g++ $(FLAGS) $(CLIENT_MAIN) $(LIB) -o $(CLIENT_BINARY) -lm -I src/ -I lib/ -g
+	@g++ $(FLAGS) $(SERVER_MAIN) $(LIB) -o $(SERVER_BINARY) -lm -I src/ -I lib/ -g
 run_client:
 	./$(CLIENT_BINARY)
 run_server:
 	./$(SERVER_BINARY)
-run:
-	./$(BINARY)
-
 valval: all
 	@echo "Looking for leaks!"
-	@valgrind $(VFLAGS) ./$(BINARY)
+	@valgrind $(VFLAGS) ./$(CLIENT_BINARY)
 
 deb_hex: all
 	@echo "Hexdumping it all!"
@@ -44,4 +40,4 @@ clean:
 
 zip:
 	@echo "Creating a zip folder with all the important files!"
-	@zip -r trabalho3-11796444_giovanni-11796451_pedro.zip utils/* registry/* index/* merge/* $(MAIN) Makefile README.md
+	@zip -r trabalho_internet_relay_chat.zip $(CLIENT_MAIN) $(SERVER_MAIN) ./lib/* ./src/* ./assets/* Makefile README.md

@@ -17,15 +17,15 @@ FLAGS2 = -Werror -Wall -Wextra -Wpedantic -Wpointer-arith -O3 -march=native
 VFLAGS= --leak-check=full --show-leak-kinds=all --track-origins=yes
 
 all:
-	@g++ $(FLAGS) $(CLIENT_MAIN) $(LIB) -o $(CLIENT_BINARY) -lm -I src/ -I lib/ -g
-	@g++ $(FLAGS) $(SERVER_MAIN) $(LIB) -o $(SERVER_BINARY) -lm -I src/ -I lib/ -g
+	@g++ -pthread $(FLAGS) $(CLIENT_MAIN) $(LIB) -o $(CLIENT_BINARY) -lm -I src/ -I lib/ -g
+	@g++ -pthread $(FLAGS) $(SERVER_MAIN) $(LIB) -o $(SERVER_BINARY) -lm -I src/ -I lib/ -g
 run_client:
 	./$(CLIENT_BINARY)
 run_server:
 	./$(SERVER_BINARY)
 valval: all
 	@echo "Looking for leaks!"
-	@valgrind $(VFLAGS) ./$(CLIENT_BINARY)
+	@valgrind $(VFLAGS) ./$(CLIENT_BINARY) -v --tool=helgrind
 
 deb_hex: all
 	@echo "Hexdumping it all!"

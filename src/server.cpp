@@ -35,10 +35,16 @@
 #define MAX_CLIENTS 10
 #define READLINE_BUFFER 4096 // Buffer utilizado na função readline();
 
+using namespace std;
+
 int serverSocket;
 int addrLen;
+bool exitSignal = false;
 
-using namespace std;
+char *smBuffer = NULL;
+char *rmBuffer = NULL;
+char *temp = NULL;
+char *input = NULL;
 
 // Struct que guarda as informações sobre as conexões
 struct sockaddr_in address;
@@ -51,117 +57,129 @@ struct sockaddr_in address;
  */
 char *readLine(FILE *stream)
 {
-       char *string = NULL;
-       int pont = 0;
-       do
-       {
-              if (pont % READLINE_BUFFER == 0) // Se o ponteiro for divisivel pelo buffer ou é 0 é preciso alocar mais memória HEAP para receber a string
-              {
-                     string = (char *)realloc(string, ((pont / READLINE_BUFFER) + 1) * READLINE_BUFFER);
-              }
-              string[pont] = (char)fgetc(stream);                             // Recebe um dos caracteres da string
-       } while (string[pont++] != '\n' && !feof(stream));                     // A condição de parada é achar o \n ou encontrar o marcador de fim de arquivo
-       string[pont - 1] = '\0';                                               // Insere o terminador de string
-       string = (char *)realloc(string, (strlen(string) + 1) * sizeof(char)); // Ajusta o tamanho da memória para exatamente o tamanho da string recebida
-       return string;
+    input = NULL;
+    int pont = 0;
+    do
+    {
+        if (pont % READLINE_BUFFER == 0) // Se o ponteiro for divisivel pelo buffer ou é 0 é preciso alocar mais memória HEAP para receber a string
+        {
+            input = (char *)realloc(input, ((pont / READLINE_BUFFER) + 1) * READLINE_BUFFER);
+        }
+        input[pont] = (char)fgetc(stream);                                // Recebe um dos caracteres da string
+    } while (input[pont++] != '\n' && !feof(stream));                     // A condição de parada é achar o \n ou encontrar o marcador de fim de arquivo
+    if(input[0] != -1)
+       input[pont - 1] = '\0';                                               // Insere o terminador de string
+    input = (char *)realloc(input, (strlen(input) + 1) * sizeof(char)); // Ajusta o tamanho da memória para exatamente o tamanho da string recebida
+    return input;
 }
 
 /**
  * @brief Função utilizada para o recebimento de mensagens
  * Caso a mensagem seja maior do que 4096 será dividida e irá checar por flags de fim de mensagem
  * (no caso \r\n conforme consta na especificação do protocolo) para então ler e mostrar a mensagem dividida
- * 
- * @param socket 
+ *
+ * @param socket
  */
-void receiveMessage(int socket)
+static void *receiveMessage(void *arg)
 {
-       char *buffer = NULL;
+    int *socket = (int *)arg;
+    bool stopFlag = false;
+    while (!stopFlag)
+    {
+        // Aloca o buffer para receber a mensagem
+        rmBuffer = (char *)malloc(MAX * sizeof(char));
 
-       // Aloca o buffer para receber a mensagem
-       buffer = (char *)malloc(MAX * sizeof(char));
+        while (true)
+        {
+            int ret = read((int)*socket, rmBuffer, MAX); 
 
-       cout << "Mensagem recebida do cliente: ";
-       while (true)
-       {
-              read(socket, buffer, MAX);
-              // Checar se há as flags de fim de mensagem, se não houver a mensagem é maior do que 4096 e será dividida em várias
-              if (buffer[MAX - 1] == '\n' && buffer[MAX - 2] == '\r')
-              {
-                     // Acabou
-                     cout << buffer << endl;
-                     break;
-              }
-              else
-              {
-                     // Ainda há mensagens para enviar
-                     cout << buffer;
-              }
-       }
-       free(buffer);
-       buffer = NULL;
+            // Caso o servidor/cliente enviar o comando /exit
+            // O retorno do comando read() terá o código 0
+            if (ret == 0)
+            {
+                free(rmBuffer);
+                rmBuffer = NULL;
+                stopFlag = true;
+                break;
+            }
+
+            cout << ">> ";
+
+            // Checar se há as flags de fim de mensagem, se não houver a mensagem é maior do que 4096 e será dividida em várias
+            if (rmBuffer[MAX - 1] == '\n' && rmBuffer[MAX - 2] == '\r')
+            {
+                // Acabou
+                cout << rmBuffer << endl;
+                break;
+            }
+            else
+            {
+                // Ainda há mensagens para enviar
+                cout << rmBuffer << endl;
+            }
+        }
+        free(rmBuffer);
+        rmBuffer = NULL;
+    }
+
+    exitSignal = true;
+    return NULL;
 }
 
 /**
  * @brief Função utilizada para o envio de mensagens
  * Caso a mensagem tenha tamanho maior que 4096, irá divir em várias mensagens
- * 
- * @param socket 
+ *
+ * @param socket
  */
-void sendMessage(int socket)
+static void *sendMessage(void *arg)
 {
-       char *buffer = NULL;
-       cout << "Digite a mensagem a ser enviada: ";
-       buffer = readLine(stdin);
+    int *socket = (int *)arg;
+    while (true)
+    {
+        smBuffer = readLine(stdin);
 
-       // Verificar se o tamanho da mensagem enviada é maior do que 4096, se for maior
-       // deve dividir a mensagem e enviar em partes separadas de até 4096 caracteres
+        if (strcmp(smBuffer, "/exit") == 0 || smBuffer[0] == -1)
+        {
+            free(smBuffer);
+            smBuffer = NULL;
+            break;
+        }
 
-       int numVezes = ((strlen(buffer) + 1) / 4096) + 1;
-       for (int i = 0; i < numVezes; i++)
-       {
-              // Dividir a mensagem em um bloco de até 4096 caracteres
-              char *temp = (char *)malloc(MAX * sizeof(char));
+        // Verificar se o tamanho da mensagem enviada é maior do que 4096, se for maior
+        // deve dividir a mensagem e enviar em partes separadas de até 4096 caracteres
 
-              // Checar se não é a última mensagem da sequencia
-              if ((i + 1) >= numVezes)
-              {
-                     int num = strlen(&buffer[i * (MAX)]) + 1;
-                     strncpy(temp, &buffer[i * (MAX)], num);
+        int numVezes = ((strlen(smBuffer) + 1) / 4096) + 1;
+        for (int i = 0; i < numVezes; i++)
+        {
+            // Dividir a mensagem em um bloco de até 4096 caracteres
+            temp = (char *)malloc(MAX * sizeof(char));
 
-                     // Adicionar o \r\n indicando a finalização
-                     temp[MAX - 2] = '\r';
-                     temp[MAX - 1] = '\n';
-              }
-              else
-              {
-                     strncpy(temp, &buffer[i * (MAX)], MAX);
-              }
-              send(socket, temp, MAX, MSG_NOSIGNAL);
+            // Checar se não é a última mensagem da sequencia
+            if ((i + 1) >= numVezes)
+            {
+                int num = strlen(&smBuffer[i * (MAX)]) + 1;
+                strncpy(temp, &smBuffer[i * (MAX)], num);
 
-              free(temp);
-              temp = NULL;
-       }
-       free(buffer);
-       buffer = NULL;
-}
+                // Adicionar o \r\n indicando a finalização
+                temp[MAX - 2] = '\r';
+                temp[MAX - 1] = '\n';
+            }
+            else
+            {
+                strncpy(temp, &smBuffer[i * (MAX)], MAX);
+            }
+            send((int)*socket, temp, MAX, MSG_NOSIGNAL);
 
-/**
- * @brief Função que fica ouvindo o cliente no socket
- * OBS: Ficará na classe clientManager, onde cada cliente terá uma thread que ficará escutando as suas mensagens
- */
-void listenSocket(int socket)
-{
-       char *buffer = NULL;
-       int n;
+            free(temp);
+            temp = NULL;
+        }
+        free(smBuffer);
+        smBuffer = NULL;
+    }
 
-       while (TRUE)
-       {
-              // Recebendo a mensagem
-              receiveMessage(socket);
-
-              // Enviando a mensagem
-              sendMessage(socket);
-       }
+    exitSignal = true;
+    return NULL;
 }
 
 /**
@@ -180,9 +198,38 @@ int acceptNewSockets()
        }
        else
        {
-              cout << "Cliente aceito..." << endl << endl;
+              cout << "Cliente aceito..." << endl
+                   << endl;
        }
        return newSocket;
+}
+
+/**
+ * @brief Função que da free em todos os buffers utilizados para recebimento e envio de mensagens
+ * É utilizada ao finalizar a aplicação
+ */
+void freeBuffers()
+{
+    if(rmBuffer != NULL)
+    {
+        free(rmBuffer);
+        rmBuffer = NULL;
+    }
+    if(smBuffer != NULL)
+    {
+        free(smBuffer);
+        smBuffer = NULL;
+    }
+    if(temp != NULL)
+    {
+        free(temp);
+        smBuffer = NULL;
+    }
+    if(input != NULL)
+    {
+        free(input);
+        input = NULL;
+    }
 }
 
 int main()
@@ -241,9 +288,27 @@ int main()
        int acceptedSocket = acceptNewSockets();
 
        // Agora que a conexão está estabelecida o servidor fica ouvindo o cliente até que ele saia do chat
-       // TODO: Cada cliente conectado terá a sua thread própria
-       listenSocket(acceptedSocket);
+       // Detach Atribute for all threads
+       pthread_t receiveMessageTh;
+       pthread_t sendMessageTh;
+
+       pthread_attr_t attr;
+
+       pthread_attr_init(&attr);
+       pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+       // Thread para receber mensagens
+       pthread_create(&receiveMessageTh, &attr, receiveMessage, &acceptedSocket);
+
+       // Thread para enviar mensagens
+       pthread_create(&sendMessageTh, &attr, sendMessage, &acceptedSocket);
 
        // Depois de sair da função listenSocket encerrar a conexão
+       while (!exitSignal)
+       {
+       }
+
+       // Checar se foi dado free em todos os buffers
+       freeBuffers();
        close(serverSocket);
 }

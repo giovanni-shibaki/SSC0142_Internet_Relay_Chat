@@ -25,6 +25,8 @@
 
 #include <thread>
 #include <mutex>
+#include <vector>
+#include <queue>
 
 #define TRUE 1
 #define FALSE 0
@@ -49,6 +51,12 @@ char *input = NULL;
 // Struct que guarda as informações sobre as conexões
 struct sockaddr_in address;
 
+// Vetor de sockets conectados
+vector<int> connectedSockets;
+
+// Queue de mensagens
+queue<string> messageQueue;
+
 /**
  * @brief Le uma linha ate o \0
  *
@@ -65,10 +73,10 @@ char *readLine(FILE *stream)
         {
             input = (char *)realloc(input, ((pont / READLINE_BUFFER) + 1) * READLINE_BUFFER);
         }
-        input[pont] = (char)fgetc(stream);                                // Recebe um dos caracteres da string
-    } while (input[pont++] != '\n' && !feof(stream));                     // A condição de parada é achar o \n ou encontrar o marcador de fim de arquivo
-    if(input[0] != -1)
-       input[pont - 1] = '\0';                                               // Insere o terminador de string
+        input[pont] = (char)fgetc(stream);            // Recebe um dos caracteres da string
+    } while (input[pont++] != '\n' && !feof(stream)); // A condição de parada é achar o \n ou encontrar o marcador de fim de arquivo
+    if (input[0] != -1)
+        input[pont - 1] = '\0';                                         // Insere o terminador de string
     input = (char *)realloc(input, (strlen(input) + 1) * sizeof(char)); // Ajusta o tamanho da memória para exatamente o tamanho da string recebida
     return input;
 }
@@ -91,7 +99,7 @@ static void *receiveMessage(void *arg)
 
         while (true)
         {
-            int ret = read((int)*socket, rmBuffer, MAX); 
+            int ret = read((int)*socket, rmBuffer, MAX);
 
             // Caso o servidor/cliente enviar o comando /exit
             // O retorno do comando read() terá o código 0
@@ -109,20 +117,28 @@ static void *receiveMessage(void *arg)
             if (rmBuffer[MAX - 1] == '\n' && rmBuffer[MAX - 2] == '\r')
             {
                 // Acabou
-                cout << rmBuffer << endl;
+                string msg = string(rmBuffer);
+                msg = msg + "\n";
+                cout << msg << endl;
+                messageQueue.push(msg);
+                //cout << rmBuffer << endl;
                 break;
             }
             else
             {
                 // Ainda há mensagens para enviar
-                cout << rmBuffer << endl;
+                string msg = string(rmBuffer);
+                msg = msg + "\n";
+                cout << msg << endl;
+                messageQueue.push(msg);
+                //cout << rmBuffer << endl;
             }
         }
         free(rmBuffer);
         rmBuffer = NULL;
     }
 
-    exitSignal = true;
+    //exitSignal = true;
     return NULL;
 }
 
@@ -134,22 +150,28 @@ static void *receiveMessage(void *arg)
  */
 static void *sendMessage(void *arg)
 {
-    int *socket = (int *)arg;
     while (true)
     {
-        smBuffer = readLine(stdin);
+        // Verificar se há mensagens
+        if(messageQueue.empty())
+        {
+            continue;
+        }
 
-        if (strcmp(smBuffer, "/exit") == 0 || smBuffer[0] == -1)
+        /*if (strcmp(smBuffer, "/exit") == 0 || smBuffer[0] == -1)
         {
             free(smBuffer);
             smBuffer = NULL;
             break;
-        }
+        }*/
+
+        string msg = messageQueue.front();
+        messageQueue.pop();
 
         // Verificar se o tamanho da mensagem enviada é maior do que 4096, se for maior
         // deve dividir a mensagem e enviar em partes separadas de até 4096 caracteres
 
-        int numVezes = ((strlen(smBuffer) + 1) / 4096) + 1;
+        int numVezes = ((msg.length() + 1) / 4096) + 1;
         for (int i = 0; i < numVezes; i++)
         {
             // Dividir a mensagem em um bloco de até 4096 caracteres
@@ -158,8 +180,8 @@ static void *sendMessage(void *arg)
             // Checar se não é a última mensagem da sequencia
             if ((i + 1) >= numVezes)
             {
-                int num = strlen(&smBuffer[i * (MAX)]) + 1;
-                strncpy(temp, &smBuffer[i * (MAX)], num);
+                int num = strlen(&msg[i * (MAX)]) + 1;
+                strncpy(temp, &msg[i * (MAX)], num);
 
                 // Adicionar o \r\n indicando a finalização
                 temp[MAX - 2] = '\r';
@@ -167,41 +189,64 @@ static void *sendMessage(void *arg)
             }
             else
             {
-                strncpy(temp, &smBuffer[i * (MAX)], MAX);
+                strncpy(temp, &msg[i * (MAX)], MAX);
             }
-            send((int)*socket, temp, MAX, MSG_NOSIGNAL);
+            // Mandar para todos os sockets connectados (por enquanto)
+            for(int socket : connectedSockets)
+            {
+                send(socket, temp, MAX, MSG_NOSIGNAL);
+            }
 
             free(temp);
             temp = NULL;
         }
-        free(smBuffer);
-        smBuffer = NULL;
+        /*free(smBuffer);
+        smBuffer = NULL;*/
     }
 
-    exitSignal = true;
+    //exitSignal = true;
     return NULL;
 }
 
 /**
- * @brief Função que aceita novas conexões no socket
+ * @brief
  *
- * @return int
+ * @param arg
+ * @return void*
  */
-int acceptNewSockets()
+static void *acceptNewSockets(void *arg)
 {
-       int newSocket; // Variável utilizada para aceitar novas conexões de sockets cliente
-       newSocket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t *)&addrLen);
-       if (newSocket < 0)
-       {
-              cout << "Erro ao aceitar conexão!" << endl;
-              exit(0);
-       }
-       else
-       {
-              cout << "Cliente aceito..." << endl
-                   << endl;
-       }
-       return newSocket;
+    int newSocket; // Variável utilizada para aceitar novas conexões de sockets cliente
+    while (true)
+    {
+        newSocket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t *)&addrLen);
+        if (newSocket < 0)
+        {
+            cout << "Erro ao aceitar conexão!" << endl;
+            exit(0);
+        }
+        else
+        {
+            cout << "Cliente aceito..." << endl
+                 << endl;
+        }
+
+        // Colocar o novo socket conectado na lista de sockets
+        connectedSockets.push_back(newSocket);
+
+        // Iniciar uma thread nova para ficar escutando esse socket
+        pthread_t receiveMessageTh;
+
+        pthread_attr_t attr;
+
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+        // Thread para receber mensagens
+        pthread_create(&receiveMessageTh, &attr, receiveMessage, &newSocket);
+    }
+
+    return NULL;
 }
 
 /**
@@ -210,22 +255,22 @@ int acceptNewSockets()
  */
 void freeBuffers()
 {
-    if(rmBuffer != NULL)
+    if (rmBuffer != NULL)
     {
         free(rmBuffer);
         rmBuffer = NULL;
     }
-    if(smBuffer != NULL)
+    if (smBuffer != NULL)
     {
         free(smBuffer);
         smBuffer = NULL;
     }
-    if(temp != NULL)
+    if (temp != NULL)
     {
         free(temp);
         smBuffer = NULL;
     }
-    if(input != NULL)
+    if (input != NULL)
     {
         free(input);
         input = NULL;
@@ -234,81 +279,77 @@ void freeBuffers()
 
 int main()
 {
-       int connectionFd;
-       int clientSockets[MAX_CLIENTS];
+    int connectionFd;
+    int clientSockets[MAX_CLIENTS];
 
-       for (size_t i = 0; i < MAX_CLIENTS; i++)
-       {
-              clientSockets[i] = 0;
-       }
+    for (size_t i = 0; i < MAX_CLIENTS; i++)
+    {
+        clientSockets[i] = 0;
+    }
 
-       // Criação do socket
-       if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-       {
-              cout << "Falha ao criar socket!" << endl;
-              exit(0);
-       }
-       else
-       {
-              cout << "Socket criado com sucesso!" << endl;
-       }
+    // Criação do socket
+    if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    {
+        cout << "Falha ao criar socket!" << endl;
+        exit(0);
+    }
+    else
+    {
+        cout << "Socket criado com sucesso!" << endl;
+    }
 
-       // Associando IP e Porta para o servidor
-       address.sin_family = AF_INET;
-       address.sin_port = htons(PORT);
-       inet_aton(LOCALIP, &(address.sin_addr));
+    // Associando IP e Porta para o servidor
+    address.sin_family = AF_INET;
+    address.sin_port = htons(PORT);
+    inet_aton(LOCALIP, &(address.sin_addr));
 
-       // Associar o socket criado com o IP
-       if ((bind(serverSocket, (struct sockaddr *)&address, sizeof(address))) != 0)
-       {
-              cout << "Erro ao associar o socket criado com o IP definido!" << endl;
-              exit(0);
-       }
-       else
-       {
-              cout << "O socket foi associado ao IP definido com sucesso!" << endl;
-       }
+    // Associar o socket criado com o IP
+    if ((bind(serverSocket, (struct sockaddr *)&address, sizeof(address))) != 0)
+    {
+        cout << "Erro ao associar o socket criado com o IP definido!" << endl;
+        exit(0);
+    }
+    else
+    {
+        cout << "O socket foi associado ao IP definido com sucesso!" << endl;
+    }
 
-       // Agora, o servidor irá escutar por novas coneções
-       // Até 5 conexões pendentes
-       if ((listen(serverSocket, 5)) < 0)
-       {
-              cout << "Erro ao escutar na porta definida!" << endl;
-              exit(0);
-       }
-       else
-       {
-              cout << "Escutando por conexões na porta definida..." << endl;
-       }
-       addrLen = sizeof(address);
+    // Agora, o servidor irá escutar por novas coneções
+    // Até 5 conexões pendentes
+    if ((listen(serverSocket, 5)) < 0)
+    {
+        cout << "Erro ao escutar na porta definida!" << endl;
+        exit(0);
+    }
+    else
+    {
+        cout << "Escutando por conexões na porta definida..." << endl;
+    }
+    addrLen = sizeof(address);
 
-       // Para aceitar várias conexões colocar isso em uma thread que roda em loop ou apenas um loop aqui
+    // Agora que a conexão está estabelecida o servidor fica ouvindo o cliente até que ele saia do chat
+    // Detach Atribute for all threads
+    pthread_t acceptNewSocketsTh;
+    pthread_t sendMessageTh;
 
-       // Função temporária que aceita uma nova conexão
-       int acceptedSocket = acceptNewSockets();
+    pthread_attr_t attr;
 
-       // Agora que a conexão está estabelecida o servidor fica ouvindo o cliente até que ele saia do chat
-       // Detach Atribute for all threads
-       pthread_t receiveMessageTh;
-       pthread_t sendMessageTh;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-       pthread_attr_t attr;
+    // Thread para aceitar novas conexões
+    int aux = 0;
+    pthread_create(&acceptNewSocketsTh, &attr, acceptNewSockets, &aux);
 
-       pthread_attr_init(&attr);
-       pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    // Thread para enviar mensagens
+    pthread_create(&sendMessageTh, &attr, sendMessage, NULL);
 
-       // Thread para receber mensagens
-       pthread_create(&receiveMessageTh, &attr, receiveMessage, &acceptedSocket);
+    // Depois de sair da função listenSocket encerrar a conexão
+    while (!exitSignal)
+    {
+    }
 
-       // Thread para enviar mensagens
-       pthread_create(&sendMessageTh, &attr, sendMessage, &acceptedSocket);
-
-       // Depois de sair da função listenSocket encerrar a conexão
-       while (!exitSignal)
-       {
-       }
-
-       // Checar se foi dado free em todos os buffers
-       freeBuffers();
-       close(serverSocket);
+    // Checar se foi dado free em todos os buffers
+    freeBuffers();
+    close(serverSocket);
 }

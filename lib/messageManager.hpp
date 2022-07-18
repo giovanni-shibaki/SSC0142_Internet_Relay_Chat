@@ -45,60 +45,132 @@ static void *sendMessage(void *arg)
 {
     while (isServerActive)
     {
+        string word;
         if (!messageQueue.empty())
         {
             mtx.lock();
             Message msg = messageQueue.front();
             messageQueue.pop();
 
+            // Encontrar o canal em que o cliente está conectado
+            Channel ch = channelMan->getChannel(msg.getClient().getChannelName());
+
             // Usar o ChannelManager para enviar mensagem para todos os clientes que estão na mesma sala do que enviou a mensagem
             // Passo a passo:
             // Checar se o usuário digitou algum comando
-            if(msg.getMessage().at(0) == '/')
-            {
-                // Digitou algum dos comandos abaixo:
+            if (msg.getMessage().at(0) == '/')
+            { // Digitou algum dos comandos abaixo:
                 // /kick nomeUsuario
                 // /mute nomeUsuario
                 // /unmute nomeUsuario
                 // /whois nomeUsuario
-
-                // Pegar a primeira palavra
-                istringstream ss(msg);
-                ss >> word;
-
-                switch (expression)
+                // Checar se o cliente é administrador
+                if (msg.getClient().getNickname() == ch.getAdminName())
                 {
-                case "/kick":
-                    // Kick command
-                    break;
-                case "/mute":
-                    // Mute command
-                    break;
-                case "/unmute":
-                    // Unmute command
-                    break;
-                case "whois":
-                    // Whois command
-                    break;
+                    // Pode realizar os comandos
+                    // Pegar a primeira palavra
+                    istringstream ss(msg.getMessage());
+                    ss >> word;
+                    switch (word[1])
+                    {
+                    case 'k':
+                        // Kick command
+                        break;
+                    case 'm':
+                        // Mute command
+                        if (ss >> word)
+                        {
+                            for (Client *c : ch.getClients())
+                            {
+                                if (word == c->getNickname())
+                                {
+                                    // Enviar a mensagem para o usuário
+                                    int socket = c->getSocketNumber();
+                                    c->mute();
+                                    send(socket, "Você foi mutado pelo administrador do canal!\n", MAX, MSG_NOSIGNAL);
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            send(msg.getClient().getSocketNumber(), "Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
+                        }
+                        break;
+                    case 'u':
+                        // Unmute command
+                        if (ss >> word)
+                        {
+                            for (Client *c : ch.getClients())
+                            {
+                                // Verificar se o cliente não é o mesmo que enviou a mensagem
+                                if (word == c->getNickname())
+                                {
+                                    // Enviar a mensagem para o usuário
+                                    int socket = c->getSocketNumber();
+                                    c->unmute();
+                                    send(socket, "Você foi desmutado pelo administrador do canal!\n", MAX, MSG_NOSIGNAL);
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            send(msg.getClient().getSocketNumber(), "Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
+                        }
+                        break;
+                    case 'w':
+                        // Whois command
+                        if (ss >> word)
+                        {
+                            for (Client *c : ch.getClients())
+                            {
+                                // Verificar se o cliente não é o mesmo que enviou a mensagem
+                                if (word == c->getNickname())
+                                {
+                                    // Enviar a mensagem para o usuário
+                                    string aux = "Ip de " + c->getNickname() + " é: " + c->getIp();
+                                    send(msg.getClient().getSocketNumber(), aux.c_str(), MAX, MSG_NOSIGNAL);
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            send(msg.getClient().getSocketNumber(), "Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
+                        }
+                        break;
+                    }
+                }
+                else
+                {
+                    // Não pode realizar os comandos
+                    send(msg.getClient().getSocketNumber(), "Comando disponível apenas para o administrador do canal!\n", MAX, MSG_NOSIGNAL);
+                }
             }
-
-            // Encontrar o canal em que o cliente está conectado
-            Channel ch = channelMan->getChannel(msg.getClient().getChannelName());
-            for(Client c: ch.getClients())
+            else
             {
-                // Verificar se o cliente não é o mesmo que enviou a mensagem
-                if(msg.getClient().getNickname() == c.getNickname())
-                    continue;
-                
-                // Enviar a mensagem para o usuário
-                int socket = c.getSocketNumber();
-                string aux = msg.getClient().getNickname() + ": " + msg.getMessage();
-                send(socket, aux.c_str(), MAX, MSG_NOSIGNAL);
-            }
+                // Checar se o usuário que mandou a mensagem não está mutado
+                if (msg.getClient().getIsMuted())
+                {
+                    // Se estiver mutado apenas avisa que ele está mutado e não faz nada
+                    send(msg.getClient().getSocketNumber(), "Você está mutado!\n", MAX, MSG_NOSIGNAL);
+                }
+                else
+                {
+                    for (Client *c : ch.getClients())
+                    {
+                        // Verificar se o cliente não é o mesmo que enviou a mensagem
+                        if (msg.getClient().getNickname() == c->getNickname())
+                            continue;
 
-            // Pegar a lista de clientes conectados no mesmo canal
-            // Enviar a mensagem para todos os usuários naquele canal menos para o usuário que a enviou
-            
+                        // Enviar a mensagem para o usuário
+                        int socket = c->getSocketNumber();
+                        string aux = msg.getClient().getNickname() + ": " + msg.getMessage();
+                        send(socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+                    }
+                }
+            }
 
             mtx.unlock();
             sleep(500);
@@ -153,7 +225,6 @@ public:
 
         // Inserir a mensagem na Queue de mensagens
         Message message = Message(c, msg);
-        cout << "Inseriu a mensagem: " << msg << endl;
         messageQueue.push(message);
 
         mtx.unlock();

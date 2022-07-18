@@ -31,23 +31,23 @@ class Channel
         string name;
         string adminName;
         // Cada canal contém uma lista de usuários conectados a ele
-        vector<Client> clients;
+        vector<Client *> clients;
 
     public:
-        Channel(string name, Client client)
+        Channel(string name, Client *client)
         {
             // Cria o canal e já insere o primeiro usuário
             this->name = name;
             this->clients.push_back(client);
-            this->adminName = client.getNickname();
+            this->adminName = client->getNickname();
         }
 
-        vector<Client> getClients()
+        vector<Client *> getClients()
         {
             return clients;
         }
 
-        void insertClient(Client c)
+        void insertClient(Client *c)
         {
             clients.push_back(c);
         }
@@ -55,23 +55,23 @@ class Channel
         bool removeClient(string clientName)
         {
             int pos = 0;
-            for(Client it: clients)
+            for(Client *it: clients)
             {
                 // Verificar se o socket do cliente atual bate
-                if(it.getNickname() == clientName)
+                if(it->getNickname() == clientName)
                 {
                     clients.erase(clients.begin()+pos);
-                    if(clientName == adminName)
-                    {
-                        // Dar o cargo de admin para o usuário mais antigo na sala
-                        this->adminName = clients.back().getNickname();
-                    }
                     return true;
                 }
                 pos++;
             }
 
             return false;
+        }
+
+        string getAdminName()
+        {
+            return this->adminName;
         }
 };
 

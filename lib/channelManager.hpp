@@ -46,13 +46,13 @@ public:
         return true;
     }
 
-    void createChannel(string name, Client client)
+    void createChannel(string name, Client *client)
     {
         Channel *newChannel = new Channel(name, client);
         channelMap.insert(pair<string, Channel>(name, *newChannel));
     }
 
-    void insertClientChannel(string channelName, Client client)
+    void insertClientChannel(string channelName, Client *client)
     {
         channelMap.at(channelName).insertClient(client);
     }

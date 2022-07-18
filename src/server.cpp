@@ -151,7 +151,7 @@ static void *receiveMessage(void *arg)
     flag = 0;
     while (flag < 1)
     {
-        send(socket.socket, "Por favor entre em uma sala pelo comando /join <nome do canal>\n", MAX, MSG_NOSIGNAL);
+        send(socket.socket, "Por favor entre em uma sala pelo comando /join #<nome do canal>\n", MAX, MSG_NOSIGNAL);
         read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
         istringstream ss(str);
@@ -204,13 +204,13 @@ static void *receiveMessage(void *arg)
     if (!channelMan->isChannelActive(word))
     {
         // Canal não existe, criar o canal e adicionar o cliente nele
-        channelMan->createChannel(word, client);
+        channelMan->createChannel(word, &client);
         client.setChannelName(word);
     }
     else
     {
         // Canal já existe, colocar o cliente nele
-        channelMan->insertClientChannel(word, client);
+        channelMan->insertClientChannel(word, &client);
         client.setChannelName(word);
     }
 

@@ -61,6 +61,8 @@ class Channel
                 if(it->getNickname() == clientName)
                 {
                     clients.erase(clients.begin()+pos);
+                    cout << clientName << " removido com sucesso!" << endl;
+                    cout << "Numero de clientes: " << clients.end() - clients.begin() << endl;
                     return true;
                 }
                 pos++;

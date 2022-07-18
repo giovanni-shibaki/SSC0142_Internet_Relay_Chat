@@ -30,6 +30,7 @@ class Client
         string nickname;
         string channelName;
         bool isMuted;
+        bool isActive;
 
     public:
         Client()
@@ -44,6 +45,7 @@ class Client
             this->nickname = nickname;
             this->channelName = channelName;
             this->isMuted = false;
+            this->isActive = true;
         }
 
         string getIp()
@@ -94,6 +96,16 @@ class Client
         void kick()
         {
             close(socketNumber);
+        }
+
+        bool getIsActive()
+        {
+            return isActive;
+        }
+
+        void setIsActive(bool flag)
+        {
+            this->isActive = flag;
         }
 };
 

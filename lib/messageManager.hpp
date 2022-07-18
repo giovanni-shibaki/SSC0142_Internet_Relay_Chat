@@ -75,6 +75,28 @@ static void *sendMessage(void *arg)
                     {
                     case 'k':
                         // Kick command
+                        if (ss >> word)
+                        {
+                            for (Client *c : ch.getClients())
+                            {
+                                if (word == c->getNickname())
+                                {
+                                    // Remover o usuário da sala
+                                    ch.removeClient(c->getNickname());
+
+                                    // Enviar a mensagem para o usuário
+                                    int socket = c->getSocketNumber();
+                                    send(socket, "Você foi desconectado do servidor!\n", MAX, MSG_NOSIGNAL);
+                                    close(c->getSocketNumber());
+                                    c->setIsActive(false);
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            send(msg.getClient().getSocketNumber(), "Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
+                        }
                         break;
                     case 'm':
                         // Mute command
@@ -171,7 +193,6 @@ static void *sendMessage(void *arg)
                     }
                 }
             }
-
             mtx.unlock();
             sleep(500);
         }

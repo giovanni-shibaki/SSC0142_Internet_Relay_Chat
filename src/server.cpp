@@ -214,7 +214,7 @@ static void *receiveMessage(void *arg)
         client.setChannelName(word);
     }
 
-    while (!stopFlag)
+    while (client.getIsActive())
     {
         // Aloca o buffer para receber a mensagem
         rmBuffer = (char *)malloc(MAX * sizeof(char));
@@ -229,7 +229,7 @@ static void *receiveMessage(void *arg)
             {
                 free(rmBuffer);
                 rmBuffer = NULL;
-                stopFlag = true;
+                client.setIsActive(false);
                 break;
             }
 
@@ -270,7 +270,8 @@ static void *receiveMessage(void *arg)
         rmBuffer = NULL;
     }
 
-    // exitSignal = true;
+    // Usuário não está mais ativo
+    channelMan->kickClient(client.getChannelName(), client.getNickname());
     return NULL;
 }
 

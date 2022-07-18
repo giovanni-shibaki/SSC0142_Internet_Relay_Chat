@@ -28,15 +28,20 @@ class Client
         int socketNumber;
         string ip;
         string nickname;
-        int channelNumber;
+        string channelName;
 
     public:
-        Client(int socket, string ip, string nickname, int channelNumber)
+        Client()
+        {
+            
+        }
+
+        Client(int socket, string ip, string nickname, string channelName)
         {
             this->socketNumber = socket;
             this->ip = ip;
             this->nickname = nickname;
-            this->channelNumber = channelNumber;
+            this->channelName = channelName;
         }
 
         string getIp()
@@ -49,14 +54,24 @@ class Client
             return nickname;
         }
 
-        int getChannelNumber()
+        void setNickname(string nick)
         {
-            return channelNumber;
+            this->nickname = nick;
         }
 
-        void setChannelNumber(int num)
+        string getChannelName()
         {
-            this->channelNumber = num;
+            return channelName;
+        }
+
+        void setChannelName(string name)
+        {
+            this->channelName = name;
+        }
+
+        int getSocketNumber()
+        {
+            return socketNumber;
         }
 };
 

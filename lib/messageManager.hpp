@@ -10,6 +10,7 @@
 
 #include <bits/stdc++.h>
 #include "message.hpp"
+#include "channelManager.hpp"
 
 // changing Library according to OS
 #ifdef _WIN32
@@ -29,8 +30,10 @@ using namespace std;
 sem_t notEmpty;
 sem_t notFull;
 mutex mtx;
-queue<Message *> messageQueue;
+queue<Message> messageQueue;
 bool isServerActive = true;
+
+ChannelManager *channelMan;
 
 static void *sendMessage(void *arg)
 {
@@ -38,20 +41,29 @@ static void *sendMessage(void *arg)
     {
         if (!messageQueue.empty())
         {
-            Message *msg = messageQueue.front();
+            mtx.lock();
+            Message msg = messageQueue.front();
             messageQueue.pop();
 
-            sem_wait(&notEmpty); // sem_wait -> decrease value
-            mtx.lock();
+            // Usar o ChannelManager para enviar mensagem para todos os clientes que estão na mesma sala do que enviou a mensagem
+            // Passo a passo:
+            // Encontrar o canal em que o cliente está conectado
+            Channel ch = channelMan->getChannel(msg.getClient().getChannelName());
+            cout << "Lista de clientes: " << endl;
+            for(Client c: ch.getClients())
+            {
+                cout << c.getNickname() << endl;
+            }
 
-            curEnergy--; // remove_item()
+            // Pegar a lista de clientes conectados no mesmo canal
+            // Enviar a mensagem para todos os usuários naquele canal menos para o usuário que a enviou
+            
 
             mtx.unlock();
-            sem_post(&notFull);  // sem_post increase value
-            gt->receiveEnergy(); // consume_item()
-            sleep(500000);
+            sleep(500);
         }
     }
+    return NULL;
 }
 
 class MessageManager
@@ -59,9 +71,14 @@ class MessageManager
 private:
     // Produtor irá receber as novas mensagens enviadas pelos clientes
     // Consumidor irá enviar a mensagem para todos os clientes que estão no mesmo chat do cliente que enviou
-    pthread_t producer, consumer;
+    pthread_t consumer;
 
 public:
+    MessageManager()
+    {
+        channelMan = new ChannelManager();
+    }
+
     void start()
     {
         pthread_attr_t attr;
@@ -74,14 +91,7 @@ public:
 
         int r;
 
-        r = pthread_create(&this->producer, &attr, generateEnergy, NULL);
-        if (r)
-        {
-            cout << "Error in creating thread" << endl;
-            exit(-1);
-        }
-
-        r = pthread_create(&this->consumer, &attr, consumeEnergy, NULL);
+        r = pthread_create(&this->consumer, &attr, sendMessage, NULL);
         if (r)
         {
             cout << "Error in creating thread" << endl;
@@ -94,6 +104,19 @@ public:
     void stop()
     {
         isServerActive = false;
+    }
+
+    void recieveMessage(Client c, string msg)
+    {
+        mtx.lock();
+
+        // Inserir a mensagem na Queue de mensagens
+        Message message = Message(c, msg);
+        cout << "Inseriu a mensagem: " << msg << endl;
+        messageQueue.push(message);
+
+        mtx.unlock();
+        sleep(500);
     }
 };
 

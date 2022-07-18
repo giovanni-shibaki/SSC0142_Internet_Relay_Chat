@@ -16,34 +16,54 @@
 #define sleep usleep
 #endif
 
+#include "clientManager.hpp"
+
 #include <stdlib.h>
 #include <bits/stdc++.h>
 #include <string>
+#include <vector>
 
 using namespace std;
 
 class Channel
 {
     private:
-        int number;
         string name;
+        // Cada canal contém uma lista de usuários conectados a ele
+        vector<Client> clients;
 
 
     public:
-        Channel(Client c, string msg)
+        Channel(string name, Client client)
         {
-            this->client = c;
-            this->message = msg;
+            // Cria o canal e já insere o primeiro usuário
+            this->name = name;
+            this->clients.push_back(client);
         }
 
-        Client getClient()
+        vector<Client> getClients()
         {
-            return client;
+            return clients;
         }
 
-        string getMessage()
+        void insertClient(Client c)
         {
-            return message;
+            clients.push_back(c);
+        }
+
+        void removeClient(int clientSocket)
+        {
+            int pos = 0;
+            for(Client it: clients)
+            {
+                // Verificar se o socket do cliente atual bate
+                if(it.getSocketNumber() == clientSocket)
+                    break;
+                pos++;
+            }
+
+            // Remover cliente da lista
+            clients.erase(clients.begin()+pos);
         }
 };
 

@@ -23,10 +23,16 @@
 #include <unistd.h>
 #include <math.h>
 
+#include "messageManager.hpp"
+#include "clientManager.hpp"
+#include "channelManager.hpp"
+
 #include <thread>
 #include <mutex>
 #include <vector>
 #include <queue>
+
+using namespace std;
 
 #define TRUE 1
 #define FALSE 0
@@ -36,8 +42,6 @@
 #define MAX 4096
 #define MAX_CLIENTS 10
 #define READLINE_BUFFER 4096 // Buffer utilizado na função readline();
-
-using namespace std;
 
 int serverSocket;
 int addrLen;
@@ -54,8 +58,13 @@ struct sockaddr_in address;
 // Vetor de sockets conectados
 vector<int> connectedSockets;
 
-// Queue de mensagens
-queue<string> messageQueue;
+MessageManager *msgMan;
+ClientManager *clientMan;
+
+struct arg_struct {
+    int socket;
+    string ip;
+};
 
 /**
  * @brief Le uma linha ate o \0
@@ -90,8 +99,77 @@ char *readLine(FILE *stream)
  */
 static void *receiveMessage(void *arg)
 {
-    int *socket = (int *)arg;
+    char *rmBuffer = NULL;
+    rmBuffer = (char *)malloc(MAX * sizeof(char));
+    struct arg_struct *socket = (struct arg_struct *)arg;
+    cout << "SOCKET: " << socket->socket << endl;
+    cout << "IP: " << socket->ip << endl;
+
     bool stopFlag = false;
+
+    // Esperar até o usuário digitar seu nickname
+    string str;
+    string word;
+    int flag = 0;
+   
+    while(flag < 1)
+    {
+        send(socket->socket, "Por favor forneça seu nickname pelo comando /nickname <apelido desejado>\n", MAX, MSG_NOSIGNAL);
+        read(socket->socket, rmBuffer, MAX);
+        str = string(rmBuffer);
+        istringstream ss(str);
+        ss >> word;
+        if(word != "/nickname")
+            continue;
+        if(ss >> word)
+        {
+            string aux = "Seu nick: " + word + "\n";
+            send(socket->socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+            flag++;
+        }
+    }
+    free(rmBuffer);
+    rmBuffer = NULL;
+
+    // Criar client
+    Client client = clientMan->insertClient(socket->socket, socket->ip, word, "");
+
+    // Pedir para o cliente entrar em uma sala
+    rmBuffer = (char *)malloc(MAX * sizeof(char));
+    flag = 0;
+    while(flag < 1)
+    {
+        send(socket->socket, "Por favor entre em uma sala pelo comando /join <nome do canal>\n", MAX, MSG_NOSIGNAL);
+        read(socket->socket, rmBuffer, MAX);
+        str = string(rmBuffer);
+        istringstream ss(str);
+        ss >> word;
+        if(word != "/join")
+            continue;
+        if(ss >> word)
+        {
+            string aux = "Entrou no canal: " + word + "\n";
+            send(socket->socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+            flag++;
+        }
+    }
+    free(rmBuffer);
+    rmBuffer = NULL;
+
+    // Colocar o cliente em uma sala
+    if(!channelMan->isChannelActive(word))
+    {
+        // Canal não existe, criar o canal e adicionar o cliente nele
+        channelMan->createChannel(word, client);
+        client.setChannelName(word);
+    }
+    else
+    {
+        // Canal já existe, colocar o cliente nele
+        channelMan->insertClientChannel(word, client);
+        client.setChannelName(word);
+    }
+
     while (!stopFlag)
     {
         // Aloca o buffer para receber a mensagem
@@ -99,7 +177,7 @@ static void *receiveMessage(void *arg)
 
         while (true)
         {
-            int ret = read((int)*socket, rmBuffer, MAX);
+            int ret = read(socket->socket, rmBuffer, MAX);
 
             // Caso o servidor/cliente enviar o comando /exit
             // O retorno do comando read() terá o código 0
@@ -120,7 +198,7 @@ static void *receiveMessage(void *arg)
                 string msg = string(rmBuffer);
                 msg = msg + "\n";
                 cout << msg << endl;
-                messageQueue.push(msg);
+                msgMan->recieveMessage(client, msg);
                 //cout << rmBuffer << endl;
                 break;
             }
@@ -130,78 +208,13 @@ static void *receiveMessage(void *arg)
                 string msg = string(rmBuffer);
                 msg = msg + "\n";
                 cout << msg << endl;
-                messageQueue.push(msg);
+                msgMan->recieveMessage(client, msg);
+                //messageQueue.push(msg);
                 //cout << rmBuffer << endl;
             }
         }
         free(rmBuffer);
         rmBuffer = NULL;
-    }
-
-    //exitSignal = true;
-    return NULL;
-}
-
-/**
- * @brief Função utilizada para o envio de mensagens
- * Caso a mensagem tenha tamanho maior que 4096, irá divir em várias mensagens
- *
- * @param socket
- */
-static void *sendMessage(void *arg)
-{
-    while (true)
-    {
-        // Verificar se há mensagens
-        if(messageQueue.empty())
-        {
-            continue;
-        }
-
-        /*if (strcmp(smBuffer, "/exit") == 0 || smBuffer[0] == -1)
-        {
-            free(smBuffer);
-            smBuffer = NULL;
-            break;
-        }*/
-
-        string msg = messageQueue.front();
-        messageQueue.pop();
-
-        // Verificar se o tamanho da mensagem enviada é maior do que 4096, se for maior
-        // deve dividir a mensagem e enviar em partes separadas de até 4096 caracteres
-
-        int numVezes = ((msg.length() + 1) / 4096) + 1;
-        for (int i = 0; i < numVezes; i++)
-        {
-            // Dividir a mensagem em um bloco de até 4096 caracteres
-            temp = (char *)malloc(MAX * sizeof(char));
-
-            // Checar se não é a última mensagem da sequencia
-            if ((i + 1) >= numVezes)
-            {
-                int num = strlen(&msg[i * (MAX)]) + 1;
-                strncpy(temp, &msg[i * (MAX)], num);
-
-                // Adicionar o \r\n indicando a finalização
-                temp[MAX - 2] = '\r';
-                temp[MAX - 1] = '\n';
-            }
-            else
-            {
-                strncpy(temp, &msg[i * (MAX)], MAX);
-            }
-            // Mandar para todos os sockets connectados (por enquanto)
-            for(int socket : connectedSockets)
-            {
-                send(socket, temp, MAX, MSG_NOSIGNAL);
-            }
-
-            free(temp);
-            temp = NULL;
-        }
-        /*free(smBuffer);
-        smBuffer = NULL;*/
     }
 
     //exitSignal = true;
@@ -216,11 +229,13 @@ static void *sendMessage(void *arg)
  */
 static void *acceptNewSockets(void *arg)
 {
-    int newSocket; // Variável utilizada para aceitar novas conexões de sockets cliente
+    // Struct de argumentos a serem enviados para a Thread de cada cliente
+    struct arg_struct args;
+
     while (true)
     {
-        newSocket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t *)&addrLen);
-        if (newSocket < 0)
+        args.socket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t *)&addrLen);
+        if (args.socket < 0)
         {
             cout << "Erro ao aceitar conexão!" << endl;
             exit(0);
@@ -230,9 +245,11 @@ static void *acceptNewSockets(void *arg)
             cout << "Cliente aceito..." << endl
                  << endl;
         }
+        // Pegar o IP do novo socket conectado
+        args.ip = inet_ntoa(address.sin_addr);
 
         // Colocar o novo socket conectado na lista de sockets
-        connectedSockets.push_back(newSocket);
+        connectedSockets.push_back(args.socket);
 
         // Iniciar uma thread nova para ficar escutando esse socket
         pthread_t receiveMessageTh;
@@ -243,7 +260,7 @@ static void *acceptNewSockets(void *arg)
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
         // Thread para receber mensagens
-        pthread_create(&receiveMessageTh, &attr, receiveMessage, &newSocket);
+        pthread_create(&receiveMessageTh, &attr, receiveMessage, &args);
     }
 
     return NULL;
@@ -330,7 +347,6 @@ int main()
     // Agora que a conexão está estabelecida o servidor fica ouvindo o cliente até que ele saia do chat
     // Detach Atribute for all threads
     pthread_t acceptNewSocketsTh;
-    pthread_t sendMessageTh;
 
     pthread_attr_t attr;
 
@@ -341,13 +357,18 @@ int main()
     int aux = 0;
     pthread_create(&acceptNewSocketsTh, &attr, acceptNewSockets, &aux);
 
-    // Thread para enviar mensagens
-    pthread_create(&sendMessageTh, &attr, sendMessage, NULL);
+    // Criar o messageManager
+    msgMan = new MessageManager();
+    msgMan->start();
+
+    // Criar o clientManager
+    clientMan = new ClientManager();
 
     // Depois de sair da função listenSocket encerrar a conexão
     while (!exitSignal)
     {
     }
+    msgMan->stop();
 
     // Checar se foi dado free em todos os buffers
     freeBuffers();

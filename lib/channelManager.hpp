@@ -61,6 +61,13 @@ public:
     {
         return channelMap.at(channelName);
     }
+
+    bool kickClient(string channelName, string clientName)
+    {
+        if(channelMap.at(channelName).removeClient(clientName))
+            return true;
+        return false;
+    }
 };
 
 #endif

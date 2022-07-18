@@ -8,6 +8,12 @@
 #ifndef MESSAGE_MANAGER_H
 #define MESSAGE_MANAGER_H
 
+// Defines da assinatura da funcao de send
+#define MAX 4096
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <bits/stdc++.h>
 #include "message.hpp"
 #include "channelManager.hpp"
@@ -47,12 +53,47 @@ static void *sendMessage(void *arg)
 
             // Usar o ChannelManager para enviar mensagem para todos os clientes que estão na mesma sala do que enviou a mensagem
             // Passo a passo:
+            // Checar se o usuário digitou algum comando
+            if(msg.getMessage().at(0) == '/')
+            {
+                // Digitou algum dos comandos abaixo:
+                // /kick nomeUsuario
+                // /mute nomeUsuario
+                // /unmute nomeUsuario
+                // /whois nomeUsuario
+
+                // Pegar a primeira palavra
+                istringstream ss(msg);
+                ss >> word;
+
+                switch (expression)
+                {
+                case "/kick":
+                    // Kick command
+                    break;
+                case "/mute":
+                    // Mute command
+                    break;
+                case "/unmute":
+                    // Unmute command
+                    break;
+                case "whois":
+                    // Whois command
+                    break;
+            }
+
             // Encontrar o canal em que o cliente está conectado
             Channel ch = channelMan->getChannel(msg.getClient().getChannelName());
-            cout << "Lista de clientes: " << endl;
             for(Client c: ch.getClients())
             {
-                cout << c.getNickname() << endl;
+                // Verificar se o cliente não é o mesmo que enviou a mensagem
+                if(msg.getClient().getNickname() == c.getNickname())
+                    continue;
+                
+                // Enviar a mensagem para o usuário
+                int socket = c.getSocketNumber();
+                string aux = msg.getClient().getNickname() + ": " + msg.getMessage();
+                send(socket, aux.c_str(), MAX, MSG_NOSIGNAL);
             }
 
             // Pegar a lista de clientes conectados no mesmo canal

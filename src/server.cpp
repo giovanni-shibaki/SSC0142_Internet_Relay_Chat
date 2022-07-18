@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <iostream>
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -31,6 +30,8 @@
 #include <mutex>
 #include <vector>
 #include <queue>
+#include <iostream>
+#include <csignal>
 
 using namespace std;
 
@@ -61,7 +62,8 @@ vector<int> connectedSockets;
 MessageManager *msgMan;
 ClientManager *clientMan;
 
-struct arg_struct {
+struct arg_struct
+{
     int socket;
     string ip;
 };
@@ -90,6 +92,12 @@ char *readLine(FILE *stream)
     return input;
 }
 
+bool isASCII(string &s)
+{
+    return !any_of(s.begin(), s.end(), [](char c)
+                   { return static_cast<unsigned char>(c) > 127; });
+}
+
 /**
  * @brief Função utilizada para o recebimento de mensagens
  * Caso a mensagem seja maior do que 4096 será dividida e irá checar por flags de fim de mensagem
@@ -99,11 +107,12 @@ char *readLine(FILE *stream)
  */
 static void *receiveMessage(void *arg)
 {
-    char *rmBuffer = NULL;
-    rmBuffer = (char *)malloc(MAX * sizeof(char));
-    struct arg_struct *socket = (struct arg_struct *)arg;
-    cout << "SOCKET: " << socket->socket << endl;
-    cout << "IP: " << socket->ip << endl;
+    char *rmBuffer = (char *)malloc(MAX * sizeof(char));
+
+    struct arg_struct *auxSocket = (struct arg_struct *)arg;
+    struct arg_struct socket;
+    socket.socket = auxSocket->socket;
+    socket.ip = auxSocket->ip;
 
     bool stopFlag = false;
 
@@ -111,20 +120,23 @@ static void *receiveMessage(void *arg)
     string str;
     string word;
     int flag = 0;
-   
-    while(flag < 1)
+
+    while (flag < 1)
     {
-        send(socket->socket, "Por favor forneça seu nickname pelo comando /nickname <apelido desejado>\n", MAX, MSG_NOSIGNAL);
-        read(socket->socket, rmBuffer, MAX);
+        send(socket.socket, "Por favor forneça seu nickname pelo comando /nickname <apelido desejado>\n", MAX, MSG_NOSIGNAL);
+        read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
         istringstream ss(str);
         ss >> word;
-        if(word != "/nickname")
+        if (word != "/nickname")
             continue;
-        if(ss >> word)
+        if (ss >> word)
         {
+            // Checando limite de caracteres e se todos são ASCII
+            if (word.length() > 50 || !isASCII(word))
+                continue;
             string aux = "Seu nick: " + word + "\n";
-            send(socket->socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+            send(socket.socket, aux.c_str(), MAX, MSG_NOSIGNAL);
             flag++;
         }
     }
@@ -132,24 +144,56 @@ static void *receiveMessage(void *arg)
     rmBuffer = NULL;
 
     // Criar client
-    Client client = clientMan->insertClient(socket->socket, socket->ip, word, "");
+    Client client = clientMan->insertClient(socket.socket, socket.ip, word, "");
 
     // Pedir para o cliente entrar em uma sala
     rmBuffer = (char *)malloc(MAX * sizeof(char));
     flag = 0;
-    while(flag < 1)
+    while (flag < 1)
     {
-        send(socket->socket, "Por favor entre em uma sala pelo comando /join <nome do canal>\n", MAX, MSG_NOSIGNAL);
-        read(socket->socket, rmBuffer, MAX);
+        send(socket.socket, "Por favor entre em uma sala pelo comando /join <nome do canal>\n", MAX, MSG_NOSIGNAL);
+        read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
         istringstream ss(str);
         ss >> word;
-        if(word != "/join")
+        if (word != "/join")
             continue;
-        if(ss >> word)
+        if (ss >> word)
         {
+            // Checando se o comeco do nome tem os caracteres '#' ou '&',
+            // e checando se ele possui um tamanho menor que 200 caracteres
+            if (word.at(0) != '#' && word.at(0) != '&')
+            {
+                cout << "Nome invalido"
+                     << "/n";
+                continue;
+            }
+            if (word.length() >= 200)
+            {
+                cout << "Nome invalido"
+                     << "/n";
+                continue;
+            }
+
+            // Checando se em algum lugar da string ele possui os caracteres:
+            // ctrl-G (ou ascii 7), ou ','
+            bool check = true;
+            for (int i = 0; i < word.length(); i++)
+            {
+                if (word.at(i) == 7 || word.at(i) == ',')
+                {
+                    cout << "Nome Invalido" << endl;
+                    check = false;
+                }
+            }
+            // Checando se não há mais palavras
+            if (ss >> word || !check)
+            {
+                continue;
+            }
+
             string aux = "Entrou no canal: " + word + "\n";
-            send(socket->socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+            send(socket.socket, aux.c_str(), MAX, MSG_NOSIGNAL);
             flag++;
         }
     }
@@ -157,7 +201,7 @@ static void *receiveMessage(void *arg)
     rmBuffer = NULL;
 
     // Colocar o cliente em uma sala
-    if(!channelMan->isChannelActive(word))
+    if (!channelMan->isChannelActive(word))
     {
         // Canal não existe, criar o canal e adicionar o cliente nele
         channelMan->createChannel(word, client);
@@ -177,7 +221,7 @@ static void *receiveMessage(void *arg)
 
         while (true)
         {
-            int ret = read(socket->socket, rmBuffer, MAX);
+            int ret = read(socket.socket, rmBuffer, MAX);
 
             // Caso o servidor/cliente enviar o comando /exit
             // O retorno do comando read() terá o código 0
@@ -196,10 +240,22 @@ static void *receiveMessage(void *arg)
             {
                 // Acabou
                 string msg = string(rmBuffer);
+
+                // Checar pelo comando ping
+                istringstream ss(msg);
+                ss >> word;
+                if (word == "/ping")
+                {
+                    // Checando se não há mais palavras
+                    if (ss >> word)
+                    {
+                        continue;
+                    }
+                    send(socket.socket, "Pong", MAX, MSG_NOSIGNAL);
+                    flag++;
+                }
                 msg = msg + "\n";
-                cout << msg << endl;
                 msgMan->recieveMessage(client, msg);
-                //cout << rmBuffer << endl;
                 break;
             }
             else
@@ -207,17 +263,14 @@ static void *receiveMessage(void *arg)
                 // Ainda há mensagens para enviar
                 string msg = string(rmBuffer);
                 msg = msg + "\n";
-                cout << msg << endl;
                 msgMan->recieveMessage(client, msg);
-                //messageQueue.push(msg);
-                //cout << rmBuffer << endl;
             }
         }
         free(rmBuffer);
         rmBuffer = NULL;
     }
 
-    //exitSignal = true;
+    // exitSignal = true;
     return NULL;
 }
 
@@ -296,6 +349,7 @@ void freeBuffers()
 
 int main()
 {
+    // signal(SIGINT, SIG_IGN);
     int connectionFd;
     int clientSockets[MAX_CLIENTS];
 
@@ -365,6 +419,7 @@ int main()
     clientMan = new ClientManager();
 
     // Depois de sair da função listenSocket encerrar a conexão
+    string command;
     while (!exitSignal)
     {
     }

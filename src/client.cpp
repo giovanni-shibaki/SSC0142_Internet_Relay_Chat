@@ -26,6 +26,8 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <iostream>
+#include <csignal>
 
 #define TRUE 1
 #define FALSE 0
@@ -214,6 +216,7 @@ void freeBuffers()
 
 int main()
 {
+    signal(SIGINT, SIG_IGN);
     int connectionFd;
 
     // Criação do socket

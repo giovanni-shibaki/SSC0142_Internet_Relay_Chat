@@ -17,8 +17,8 @@ FLAGS2 = -Werror -Wall -Wextra -Wpedantic -Wpointer-arith -O3 -march=native
 VFLAGS= --leak-check=full --show-leak-kinds=all --track-origins=yes
 
 all:
-	@g++ -pthread $(FLAGS) $(CLIENT_MAIN) $(LIB) -o $(CLIENT_BINARY) -lm -I src/ -I lib/ -g
-	@g++ -pthread $(FLAGS) $(SERVER_MAIN) $(LIB) -o $(SERVER_BINARY) -lm -I src/ -I lib/ -g
+	@gcc -pthread $(FLAGS) $(CLIENT_MAIN) $(LIB) -o $(CLIENT_BINARY) -lm -I src/ -I lib/ -lstdc++
+	@gcc -pthread $(FLAGS) $(SERVER_MAIN) $(LIB) -o $(SERVER_BINARY) -lm -I src/ -I lib/ -lstdc++
 run_client:
 	./$(CLIENT_BINARY)
 run_server:
@@ -40,4 +40,4 @@ clean:
 
 zip:
 	@echo "Creating a zip folder with all the important files!"
-	@zip -r trabalho_internet_relay_chat.zip $(CLIENT_MAIN) $(SERVER_MAIN) ./lib/* ./src/* ./assets/* Makefile README.md
+	@zip -r trabalho_internet_relay_chat.zip $(CLIENT_MAIN) $(SERVER_MAIN) ./lib/* ./src/* ./assets/* Makefile README.md Link_para_o_GitHub.txt

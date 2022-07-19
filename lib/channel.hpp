@@ -8,14 +8,6 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
-// changing Library according to OS
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <unistd.h>
-#define sleep usleep
-#endif
-
 #include "clientManager.hpp"
 
 #include <stdlib.h>

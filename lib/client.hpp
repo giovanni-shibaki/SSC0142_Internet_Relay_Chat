@@ -8,16 +8,9 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-// changing Library according to OS
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <unistd.h>
-#define sleep usleep
-#endif
-
 #include <stdlib.h>
 #include <bits/stdc++.h>
+#include <unistd.h>
 #include <string>
 
 using namespace std;

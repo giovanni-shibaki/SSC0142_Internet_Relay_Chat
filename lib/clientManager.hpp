@@ -10,15 +10,6 @@
 
 #include <bits/stdc++.h>
 #include "client.hpp"
-
-// changing Library according to OS
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <unistd.h>
-#define sleep usleep
-#endif
-
 #include <vector>
 
 using namespace std;

@@ -16,21 +16,14 @@
 #include <string.h>
 
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <math.h>
 
-#include <iostream>
 #include <string>
 #include <thread>
-#include <mutex>
 #include <iostream>
 #include <csignal>
-
-#define TRUE 1
-#define FALSE 0
 
 #define PORT 42069
 #define SERVERIP "127.0.0.1"
@@ -79,7 +72,7 @@ char *readLine(FILE *stream)
 /**
  * @brief Função utilizada para o recebimento de mensagens
  * Caso a mensagem seja maior do que 4096 será dividida e irá checar por flags de fim de mensagem
- * (no caso \r\n conforme consta na especificação do protocolo) para então ler e mostrar a mensagem dividida
+ * (no caso \\r\\n conforme consta na especificação do protocolo) para então ler e mostrar a mensagem dividida
  *
  * @param socket
  */

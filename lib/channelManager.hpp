@@ -12,14 +12,6 @@
 #include "channel.hpp"
 #include "utils.hpp"
 
-// changing Library according to OS
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <unistd.h>
-#define sleep usleep
-#endif
-
 using namespace std;
 
 class ChannelManager
@@ -59,7 +51,7 @@ public:
         // Mandar mensagem para todos os clientes conectados
         for (Client *c : channelMap.at(channelName).getClients())
         {
-            sendMessage(c->getSocketNumber(), string(client->getNickname()+" entrou no canal!\n"), MAX, &channelMap.at(channelName), c);
+            sendMessage(c->getSocketNumber(), string(client->getNickname() + " entrou no canal!\n"), MAX, &channelMap.at(channelName), c);
         }
     }
 
@@ -71,7 +63,15 @@ public:
     bool kickClient(string channelName, string clientName)
     {
         if (channelMap.at(channelName).removeClient(clientName))
+        {
+            // Usuário removido do canal
+            // Mandar mensagem para todos os clientes conectados
+            for (Client *c : channelMap.at(channelName).getClients())
+            {
+                sendMessage(c->getSocketNumber(), string(clientName + " saiu no canal!\n"), MAX, &channelMap.at(channelName), c);
+            }
             return true;
+        }
         return false;
     }
 };

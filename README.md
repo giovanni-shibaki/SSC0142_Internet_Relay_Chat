@@ -1,5 +1,5 @@
 # SSC0142_Internet_Relay_Chat
-Projeto de desenvolvimento de um IRC em linguaguem C para a disciplina SSC0142 - Redes de Computadores
+Projeto de desenvolvimento de um IRC em linguaguem C++ para a disciplina SSC0142 - Redes de Computadores
 
 <html>
 	 <img src="./assets/video_chat2.gif" alt="Gif_chat"  width="600px">
@@ -13,15 +13,21 @@ Projeto de desenvolvimento de um IRC em linguaguem C para a disciplina SSC0142 -
 
 # Árvore de arquivos do projeto
     .
+    ├── Link_para_o_GitHub.txt
     ├── Makefile
     ├── README.md
     ├── assets
-    │   └── mensagemEnorme.txt
-    ├── client
+    │   ├── mensagemEnorme.txt
+    │   ├── video_chat.gif
+    │   └── video_chat2.gif
     ├── lib
-    │   ├── clientManager.cpp
-    │   └── messageManager.cpp
-    ├── server
+    │   ├── channel.hpp
+    │   ├── channelManager.hpp
+    │   ├── client.hpp
+    │   ├── clientManager.hpp
+    │   ├── message.hpp
+    │   ├── messageManager.hpp
+    │   └── utils.hpp
     └── src
         ├── client.cpp
         └── server.cpp
@@ -34,7 +40,7 @@ Para compilar o projeto basta utilizar o comando **make** no arquivo Makefile fo
 
 > make
 
-Para compilar foi utilizado o compilador **g++** na versão **(Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0**
+Para compilar foi utilizado o compilador **gcc** na versão **gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~20.04.1)**
 
 ## Executar
 
@@ -46,13 +52,34 @@ Para executar o cliente e o servidor, basta utilizar os comandos abaixo:
 
 > make run_server
 
-# Observações
+# Comandos
 
-Conforme a específicação do projeto, caso uma mensagem com mais de 4096 caracteres tenha sido enviada por parte do cliente ou servidor, esta mensagem deve ser dividida em partes de 4096. No entanto, o buffer de digitação do terminal tem tamanho 4096 e não permite a utilização do comando de **copiar e colar** para mensagens maiores. Dessa forma, para testar inputs com mais de 4096 caracteres deve ser passado uma arquivo contendo essa mensagem. Para testar, fornecemos um arquivo **.txt** com 4107 caracteres que pode ser utilizado na execução conforme abaixo:
+Abaixo, a lista de comandos para todos os usuários:
 
-> make run_client < ./assets/mensagemEnorme.txt
+- Connect (/connect):
+    - Usado para se conectar ao servidor logo no inicio
+- Quit (/quit):
+    - Usado para se desconectar do servidor
+- Ping (/ping):
+    - Quando usado o servidor irá lhe responder com uma mensagem "Pong"
+- Join (/join \<nome do canal>):
+    - Usado para entrar em algum dos canais, caso o canal em questão nao exista um novo canal será criado
+- Nickname (/nickname \<apelido desejado>):
+    - Usado para atribuir a si mesmo o apelido desejado
+- Observacao:
+    - Os nomes de canal e de nickname devem obedecer uma série de regras para serem considerados válidos.
+    - Alem disso o servidor faz a checagem se há dois usuarios com o mesmo nome, portanto use um nome original.
 
-Foi também implementado o comando **/exit**. Caso servidor ou cliente digite este comando, a aplicação será finalizada para ambos.
+Abaixo, a lista de comandos para os administradores de canais (são aqueles que criam o canal):
+
+- Kick (/kick \<nome do usuario>):
+    - Esse comando expulsa o usuário em questão do canal.
+- Mute (/mute \<nome do usuario>):
+    - Esse comando faz com que o usuário em questão não consiga enviar mais mensagens no canal.
+- Unmute (/unmute \<nome do usuario>):
+    - Esse comando faz com que o usuário silenciado possa voltar a enviar mensagens normalmente.
+- Whois (/whois \<nome do usuario>):
+    - Esse comando retorna ao administrador do servidor o IP do usuário em questao.
 
 # Referências
 

@@ -19,14 +19,6 @@
 #include "channelManager.hpp"
 #include "utils.hpp"
 
-// changing Library according to OS
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <unistd.h>
-#define sleep usleep
-#endif
-
 using namespace std;
 
 #include <semaphore.h>
@@ -42,7 +34,7 @@ bool isServerActive = true;
 
 ChannelManager *channelMan;
 
-static void *sendMessage(void *arg)
+static void *messageConsumer(void *arg)
 {
     while (isServerActive)
     {
@@ -261,7 +253,7 @@ public:
 
         int r;
 
-        r = pthread_create(&this->consumer, &attr, sendMessage, NULL);
+        r = pthread_create(&this->consumer, &attr, messageConsumer, NULL);
         if (r)
         {
             cout << "Error in creating thread" << endl;
@@ -284,7 +276,7 @@ public:
 
         mtx.lock();
 
-        // Inserir a mensagem na Queue de mensagens
+        // Inserir a mensagem na Fila de mensagens
         Message message = Message(c, msg);
         messageQueue.push(message);
 

@@ -16,27 +16,16 @@
 #include <string.h>
 
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <math.h>
 
 #include "messageManager.hpp"
 #include "clientManager.hpp"
-#include "channelManager.hpp"
 
 #include <thread>
-#include <mutex>
-#include <vector>
-#include <queue>
 #include <iostream>
 #include <csignal>
-
-using namespace std;
-
-#define TRUE 1
-#define FALSE 0
 
 #define PORT 42069
 #define LOCALIP "127.0.0.1"
@@ -44,10 +33,11 @@ using namespace std;
 #define MAX_CLIENTS 10
 #define READLINE_BUFFER 4096 // Buffer utilizado na função readline();
 
+using namespace std;
+
 int serverSocket;
 int addrLen;
 bool exitSignal = false;
-
 char *smBuffer = NULL;
 char *rmBuffer = NULL;
 char *temp = NULL;
@@ -59,6 +49,7 @@ struct sockaddr_in address;
 // Vetor de sockets conectados
 vector<int> connectedSockets;
 
+// Managers de mensagens e clientes conectados
 MessageManager *msgMan;
 ClientManager *clientMan;
 
@@ -92,6 +83,13 @@ char *readLine(FILE *stream)
     return input;
 }
 
+/**
+ * @brief Função que checa se a string digitada contém apenas caracteres ASCII
+ * 
+ * @param s 
+ * @return true 
+ * @return false 
+ */
 bool isASCII(string &s)
 {
     return !any_of(s.begin(), s.end(), [](char c)
@@ -101,7 +99,7 @@ bool isASCII(string &s)
 /**
  * @brief Função utilizada para o recebimento de mensagens
  * Caso a mensagem seja maior do que 4096 será dividida e irá checar por flags de fim de mensagem
- * (no caso \r\n conforme consta na especificação do protocolo) para então ler e mostrar a mensagem dividida
+ * (no caso \\r\\n conforme consta na especificação do protocolo) para então ler e mostrar a mensagem dividida
  * 
  * Observação: Cada novo cliente conectado no servidor irá iniciar uma thread com a essa função para o recebimento de mensagens
  *
@@ -286,10 +284,10 @@ static void *receiveMessage(void *arg)
 }
 
 /**
- * @brief
- *
- * @param arg
- * @return void*
+ * @brief Função que aceita a conexão de novos clientes
+ * Roda em um thread única, criando as threads de cada cliente que entra
+ * @param arg 
+ * @return void* 
  */
 static void *acceptNewSockets(void *arg)
 {
@@ -349,7 +347,7 @@ void freeBuffers()
     if (temp != NULL)
     {
         free(temp);
-        smBuffer = NULL;
+        temp = NULL;
     }
     if (input != NULL)
     {

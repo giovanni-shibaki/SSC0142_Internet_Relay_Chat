@@ -8,14 +8,6 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
-// changing Library according to OS
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <unistd.h>
-#define sleep usleep
-#endif
-
 #include "client.hpp"
 
 #include <stdlib.h>

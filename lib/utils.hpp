@@ -20,12 +20,7 @@
 #include "client.hpp"
 #include "message.hpp"
 
-#include <stdlib.h>
 #include <sys/socket.h>
-#include <bits/stdc++.h>
-#include <string>
-#include <iostream>
-#include <csignal>
 
 #define MAX 4096
 

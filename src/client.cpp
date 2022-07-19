@@ -33,7 +33,7 @@
 #define FALSE 0
 
 #define PORT 42069
-#define LOCALIP "127.0.0.1"
+#define SERVERIP "127.0.0.1"
 #define MAX 4096
 #define MAX_CLIENTS 10
 #define READLINE_BUFFER 4096 // Buffer utilizado na função readline();
@@ -242,7 +242,7 @@ int main()
     // Associando IP e Porta para o servidor
     address.sin_family = AF_INET;
     address.sin_port = htons(PORT);
-    inet_aton(LOCALIP, &(address.sin_addr));
+    inet_aton(SERVERIP, &(address.sin_addr));
 
     // Aguardar o comando /connect para se conectar ao servidor
     cout << "Para se conectar ao servidor utilize o comando /connect" << endl;

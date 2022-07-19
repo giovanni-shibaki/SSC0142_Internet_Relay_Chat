@@ -68,10 +68,10 @@ char *readLine(FILE *stream)
         {
             input = (char *)realloc(input, ((pont / READLINE_BUFFER) + 1) * READLINE_BUFFER);
         }
-        input[pont] = (char)fgetc(stream);                                // Recebe um dos caracteres da string
-    } while (input[pont++] != '\n' && !feof(stream));                     // A condição de parada é achar o \n ou encontrar o marcador de fim de arquivo
-    if(input[0] != -1)
-        input[pont - 1] = '\0';                                               // Insere o terminador de string
+        input[pont] = (char)fgetc(stream);            // Recebe um dos caracteres da string
+    } while (input[pont++] != '\n' && !feof(stream)); // A condição de parada é achar o \n ou encontrar o marcador de fim de arquivo
+    if (input[0] != -1)
+        input[pont - 1] = '\0';                                         // Insere o terminador de string
     input = (char *)realloc(input, (strlen(input) + 1) * sizeof(char)); // Ajusta o tamanho da memória para exatamente o tamanho da string recebida
     return input;
 }
@@ -95,6 +95,16 @@ static void *receiveMessage(void *arg)
         while (true)
         {
             int ret = read((int)*socket, rmBuffer, MAX);
+
+            // Caso tenha recebido a mensagem com sucesso, retornar uma confirmação para o servidor
+            if(ret != -1)
+            {
+                send((int)*socket, "<msgConfirm>", MAX, MSG_NOSIGNAL);
+            }
+            else
+            {
+                continue;
+            }
 
             // Caso o servidor/cliente enviar o comando /exit
             // O retorno do comando read() terá o código 0
@@ -143,7 +153,7 @@ static void *sendMessage(void *arg)
         smBuffer = readLine(stdin);
 
         // Verifica se o usuário usou o comando /exit ou se o readline retornou EOF
-        if (strcmp(smBuffer, "/exit") == 0 || smBuffer[0] == -1)
+        if (strcmp(smBuffer, "/quit") == 0 || smBuffer[0] == -1)
         {
             free(smBuffer);
             smBuffer = NULL;
@@ -192,22 +202,22 @@ static void *sendMessage(void *arg)
  */
 void freeBuffers()
 {
-    if(rmBuffer != NULL)
+    if (rmBuffer != NULL)
     {
         free(rmBuffer);
         rmBuffer = NULL;
     }
-    if(smBuffer != NULL)
+    if (smBuffer != NULL)
     {
         free(smBuffer);
         smBuffer = NULL;
     }
-    if(temp != NULL)
+    if (temp != NULL)
     {
         free(temp);
-        smBuffer = NULL;
+        temp = NULL;
     }
-    if(input != NULL)
+    if (input != NULL)
     {
         free(input);
         input = NULL;
@@ -217,7 +227,6 @@ void freeBuffers()
 int main()
 {
     signal(SIGINT, SIG_IGN);
-    int connectionFd;
 
     // Criação do socket
     if ((clientSocket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
@@ -235,11 +244,28 @@ int main()
     address.sin_port = htons(PORT);
     inet_aton(LOCALIP, &(address.sin_addr));
 
+    // Aguardar o comando /connect para se conectar ao servidor
+    cout << "Para se conectar ao servidor utilize o comando /connect" << endl;
+    while (true)
+    {
+        rmBuffer = readLine(stdin);
+        if (strcmp("/connect", rmBuffer) == 0)
+        {
+            break;
+        }
+        if (strcmp("/quit", rmBuffer) == 0)
+        {
+            close(clientSocket);
+            return 0;
+        }
+    }
+
     // Associar o socket criado com o IP
     if ((connect(clientSocket, (struct sockaddr *)&address, sizeof(address))) < 0)
     {
         cout << "Erro ao associar o socket criado com o IP definido!" << endl;
-        exit(0);
+        close(clientSocket);
+        return 0;
     }
     else
     {

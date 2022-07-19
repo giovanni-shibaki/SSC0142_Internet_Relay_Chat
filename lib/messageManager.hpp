@@ -41,6 +41,53 @@ bool isServerActive = true;
 
 ChannelManager *channelMan;
 
+/**
+ * @brief Função responsável pelo envio de mensagens por parte do servidor
+ * Checa se a mensagem foi enviada com sucesso, caso contrário tenta reenviar até 5 vezes
+ * Caso não consiga enviar nessas 5x, encerra a conexão com o cliente
+ * 
+ * @param socket 
+ * @param msg 
+ * @param size 
+ * @param ch 
+ * @param client
+ * @return bool
+ */
+bool sendMessage(int socket, string msg, int size, Channel *ch, Client *client)
+{
+    bool flag = false;
+    for(int i=0; i<5; i++)
+    {
+        send(socket, msg.c_str(), size, MSG_NOSIGNAL);
+
+        char ret[MAX];
+        if(read(socket, ret, MAX) == -1)
+            break;
+        string word;
+        istringstream ss(ret);
+        ss >> word;
+        if(strcmp("<msgConfirm>", word.c_str()) == 0)
+        {
+            flag = true;
+            break;
+        }
+        sleep(100);
+    }
+    if(!flag)
+    {
+        if(ch == NULL)
+            return false;
+        // Falha ao enviar mensagem, desconectar o cliente
+        // Remover o usuário da sala
+        cout << "Falha ao enviar mensagem, desconectando cliente: " << client->getNickname() << endl;
+        ch->removeClient(client->getNickname());
+        close(client->getSocketNumber());
+        client->setIsActive(false);
+        return false;
+    }
+    return true;
+}
+
 static void *sendMessage(void *arg)
 {
     while (isServerActive)
@@ -53,19 +100,13 @@ static void *sendMessage(void *arg)
             messageQueue.pop();
 
             // Encontrar o canal em que o cliente está conectado
-            Channel ch = channelMan->getChannel(msg.getClient().getChannelName());
+            Channel ch = channelMan->getChannel(msg.getClient()->getChannelName());
 
-            // Usar o ChannelManager para enviar mensagem para todos os clientes que estão na mesma sala do que enviou a mensagem
-            // Passo a passo:
             // Checar se o usuário digitou algum comando
             if (msg.getMessage().at(0) == '/')
-            { // Digitou algum dos comandos abaixo:
-                // /kick nomeUsuario
-                // /mute nomeUsuario
-                // /unmute nomeUsuario
-                // /whois nomeUsuario
+            {
                 // Checar se o cliente é administrador
-                if (msg.getClient().getNickname() == ch.getAdminName())
+                if (msg.getClient()->getNickname() == ch.getAdminName())
                 {
                     // Pode realizar os comandos
                     // Pegar a primeira palavra
@@ -77,6 +118,7 @@ static void *sendMessage(void *arg)
                         // Kick command
                         if (ss >> word)
                         {
+                            bool flag = false;
                             for (Client *c : ch.getClients())
                             {
                                 if (word == c->getNickname())
@@ -86,110 +128,156 @@ static void *sendMessage(void *arg)
 
                                     // Enviar a mensagem para o usuário
                                     int socket = c->getSocketNumber();
-                                    send(socket, "Você foi desconectado do servidor!\n", MAX, MSG_NOSIGNAL);
+                                    if(!sendMessage(socket, string("Você foi desconectado do servidor!\n"), MAX, &ch, c))
+                                    {
+                                        // Falha ao enviar mensagem, cliente foi desconectado
+                                        break;
+                                    }
                                     close(c->getSocketNumber());
                                     c->setIsActive(false);
+                                    flag = true;
                                     break;
                                 }
+                            }
+                            if (!flag)
+                            {
+                                sendMessage(msg.getClient()->getSocketNumber(), string("Usuário não encontrado!\n"), MAX, &ch, msg.getClient());
                             }
                         }
                         else
                         {
-                            send(msg.getClient().getSocketNumber(), "Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
+                            sendMessage(msg.getClient()->getSocketNumber(), string("Faltou algum argumento, comando inválido!\n"), MAX, &ch, msg.getClient());
                         }
                         break;
                     case 'm':
                         // Mute command
                         if (ss >> word)
                         {
+                            bool flag = false;
                             for (Client *c : ch.getClients())
                             {
                                 if (word == c->getNickname())
                                 {
+                                    // Se o usuário já está mutado
+                                    if (c->getIsMuted())
+                                    {
+                                        sendMessage(msg.getClient()->getSocketNumber(), string("O usuário já se encontra mutado!\n"), MAX, &ch, msg.getClient());
+                                        flag = true;
+                                        break;
+                                    }
+
                                     // Enviar a mensagem para o usuário
                                     int socket = c->getSocketNumber();
                                     c->mute();
-                                    send(socket, "Você foi mutado pelo administrador do canal!\n", MAX, MSG_NOSIGNAL);
+                                    sendMessage(socket, string("Você foi mutado pelo administrador do canal!\n"), MAX, &ch, c);
+                                    flag = true;
                                     break;
                                 }
+                            }
+                            if (!flag)
+                            {
+                                sendMessage(msg.getClient()->getSocketNumber(), string("Usuário não encontrado!\n"), MAX, &ch, msg.getClient());
                             }
                         }
                         else
                         {
-                            send(msg.getClient().getSocketNumber(), "Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
+                            sendMessage(msg.getClient()->getSocketNumber(), string("Faltou algum argumento, comando inválido!\n"), MAX, &ch, msg.getClient());
                         }
                         break;
                     case 'u':
                         // Unmute command
                         if (ss >> word)
                         {
+                            bool flag = false;
                             for (Client *c : ch.getClients())
                             {
                                 // Verificar se o cliente não é o mesmo que enviou a mensagem
                                 if (word == c->getNickname())
                                 {
+                                    // Se o usuário já está desmutado
+                                    if (!c->getIsMuted())
+                                    {
+                                        sendMessage(msg.getClient()->getSocketNumber(), string("O usuário já se encontra desmutado!\n"), MAX, &ch, msg.getClient());
+                                        flag = true;
+                                        break;
+                                    }
+
                                     // Enviar a mensagem para o usuário
                                     int socket = c->getSocketNumber();
                                     c->unmute();
-                                    send(socket, "Você foi desmutado pelo administrador do canal!\n", MAX, MSG_NOSIGNAL);
+                                    sendMessage(socket, string("Você foi desmutado pelo administrador do canal!\n"), MAX, &ch, c);
+                                    flag = true;
                                     break;
                                 }
+                            }
+                            if (!flag)
+                            {
+                                sendMessage(msg.getClient()->getSocketNumber(), string("Usuário não encontrado!\n"), MAX, &ch, msg.getClient());
                             }
                         }
                         else
                         {
-                            send(msg.getClient().getSocketNumber(), "Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
+                            sendMessage(msg.getClient()->getSocketNumber(), string("Faltou algum argumento, comando inválido!\n"), MAX, &ch, msg.getClient());
                         }
                         break;
                     case 'w':
                         // Whois command
                         if (ss >> word)
                         {
+                            bool flag = false;
                             for (Client *c : ch.getClients())
                             {
                                 // Verificar se o cliente não é o mesmo que enviou a mensagem
                                 if (word == c->getNickname())
                                 {
                                     // Enviar a mensagem para o usuário
-                                    string aux = "Ip de " + c->getNickname() + " é: " + c->getIp();
-                                    send(msg.getClient().getSocketNumber(), aux.c_str(), MAX, MSG_NOSIGNAL);
+                                    string aux = "Ip de " + c->getNickname() + " é: " + c->getIp() + "\n";
+                                    sendMessage(msg.getClient()->getSocketNumber(), aux, MAX, &ch, msg.getClient());
+                                    flag = true;
                                     break;
                                 }
+                            }
+                            if (!flag)
+                            {
+                                sendMessage(msg.getClient()->getSocketNumber(), string("Usuário não encontrado!\n"), MAX, &ch, msg.getClient());
                             }
                         }
                         else
                         {
-                            send(msg.getClient().getSocketNumber(), "Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
+                            sendMessage(msg.getClient()->getSocketNumber(), string("Faltou algum argumento, comando inválido!\n"), MAX, &ch, msg.getClient());
                         }
+                        break;
+                    default:
+                        sendMessage(msg.getClient()->getSocketNumber(), string("Comando iválido!\n"), MAX, &ch, msg.getClient());
                         break;
                     }
                 }
                 else
                 {
-                    // Não pode realizar os comandos
-                    send(msg.getClient().getSocketNumber(), "Comando disponível apenas para o administrador do canal!\n", MAX, MSG_NOSIGNAL);
+                    // Não pode realizar os comandos caso não seja administrador
+                    sendMessage(msg.getClient()->getSocketNumber(), string("Comando disponível apenas para o administrador do canal!\n"), MAX, &ch, msg.getClient());
                 }
             }
             else
             {
                 // Checar se o usuário que mandou a mensagem não está mutado
-                if (msg.getClient().getIsMuted())
+                if (msg.getClient()->getIsMuted())
                 {
                     // Se estiver mutado apenas avisa que ele está mutado e não faz nada
-                    send(msg.getClient().getSocketNumber(), "Você está mutado!\n", MAX, MSG_NOSIGNAL);
+                    sendMessage(msg.getClient()->getSocketNumber(), string("Você está mutado!\n"), MAX, &ch, msg.getClient());
                 }
                 else
                 {
                     for (Client *c : ch.getClients())
                     {
                         // Verificar se o cliente não é o mesmo que enviou a mensagem
-                        if (msg.getClient().getNickname() == c->getNickname())
+                        if (msg.getClient()->getNickname() == c->getNickname())
                             continue;
 
                         // Enviar a mensagem para o usuário
                         int socket = c->getSocketNumber();
-                        string aux = msg.getClient().getNickname() + ": " + msg.getMessage();
-                        send(socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+                        string aux = msg.getClient()->getNickname() + ": " + msg.getMessage();
+                        sendMessage(socket, aux, MAX, &ch, c);
                     }
                 }
             }

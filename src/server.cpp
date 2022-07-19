@@ -102,6 +102,8 @@ bool isASCII(string &s)
  * @brief Função utilizada para o recebimento de mensagens
  * Caso a mensagem seja maior do que 4096 será dividida e irá checar por flags de fim de mensagem
  * (no caso \r\n conforme consta na especificação do protocolo) para então ler e mostrar a mensagem dividida
+ * 
+ * Observação: Cada novo cliente conectado no servidor irá iniciar uma thread com a essa função para o recebimento de mensagens
  *
  * @param socket
  */
@@ -123,7 +125,7 @@ static void *receiveMessage(void *arg)
 
     while (flag < 1)
     {
-        send(socket.socket, "Por favor forneça seu nickname pelo comando /nickname <apelido desejado>\n", MAX, MSG_NOSIGNAL);
+        sendMessage(socket.socket, string("Por favor forneça seu nickname pelo comando /nickname <apelido desejado>"), MAX, NULL, NULL);
         read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
         istringstream ss(str);
@@ -136,7 +138,7 @@ static void *receiveMessage(void *arg)
             if (word.length() > 50 || !isASCII(word))
                 continue;
             string aux = "Seu nick: " + word + "\n";
-            send(socket.socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+            sendMessage(socket.socket, aux, MAX, NULL, NULL);
             flag++;
         }
     }
@@ -151,7 +153,7 @@ static void *receiveMessage(void *arg)
     flag = 0;
     while (flag < 1)
     {
-        send(socket.socket, "Por favor entre em uma sala pelo comando /join #<nome do canal>\n", MAX, MSG_NOSIGNAL);
+        sendMessage(socket.socket, string("Por favor entre em uma sala pelo comando /join #<nome do canal>"), MAX, NULL, NULL);
         read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
         istringstream ss(str);
@@ -192,8 +194,9 @@ static void *receiveMessage(void *arg)
                 continue;
             }
 
-            string aux = "Entrou no canal: " + word + "\n";
-            send(socket.socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+            string aux = "Você entrou no canal: " + word + "\n";
+            sendMessage(socket.socket, aux, MAX, NULL, NULL);
+            
             flag++;
         }
     }
@@ -233,8 +236,6 @@ static void *receiveMessage(void *arg)
                 break;
             }
 
-            cout << ">> ";
-
             // Checar se há as flags de fim de mensagem, se não houver a mensagem é maior do que 4096 e será dividida em várias
             if (rmBuffer[MAX - 1] == '\n' && rmBuffer[MAX - 2] == '\r')
             {
@@ -249,9 +250,10 @@ static void *receiveMessage(void *arg)
                     // Checando se não há mais palavras
                     if (ss >> word)
                     {
+                        // Se houver, comando inválido, não fazer nada
                         continue;
                     }
-                    send(socket.socket, "Pong", MAX, MSG_NOSIGNAL);
+                    sendMessage(socket.socket, string("Pong"), MAX, NULL, NULL);
                     flag++;
                 }
                 msg = msg + "\n";

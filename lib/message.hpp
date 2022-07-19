@@ -37,9 +37,9 @@ class Message
             this->message = msg;
         }
 
-        Client getClient()
+        Client *getClient()
         {
-            return client;
+            return &client;
         }
 
         string getMessage()

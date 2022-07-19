@@ -27,11 +27,10 @@ class ClientManager
 {
 private:
     vector<Client> clients;
-    
+
 public:
     ClientManager()
     {
-
     }
 
     Client insertClient(int socket, string ip, string nickname, string channelName)
@@ -39,6 +38,37 @@ public:
         Client c = Client(socket, ip, nickname, "");
         this->clients.push_back(c);
         return c;
+    }
+
+    bool checkUserName(string name)
+    {
+        // Checar se já existe um usuário com o nome enviado como argumento
+        for (Client c : clients)
+        {
+            if (c.getNickname() == name)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool removeClient(string clientName)
+    {
+        int pos = 0;
+        for (Client it : clients)
+        {
+            // Verificar se o socket do cliente atual bate
+            if (it.getNickname() == clientName)
+            {
+                clients.erase(clients.begin() + pos);
+                cout << clientName << " removido com sucesso da lista de clientes!" << endl;
+                return true;
+            }
+            pos++;
+        }
+
+        return false;
     }
 };
 

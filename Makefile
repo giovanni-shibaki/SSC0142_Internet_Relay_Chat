@@ -6,7 +6,7 @@
 # 
 # @copyright Copyright (c) 2021
 
-LIB = lib/clientManager.hpp lib/messageManager.hpp lib/channelManager.hpp
+LIB = lib/clientManager.hpp lib/messageManager.hpp lib/channelManager.hpp lib/utils.hpp
 SERVER_MAIN = src/server.cpp
 CLIENT_MAIN = src/client.cpp
 SERVER_BINARY = server

@@ -125,7 +125,7 @@ static void *receiveMessage(void *arg)
 
     while (flag < 1)
     {
-        sendMessage(socket.socket, string("Por favor forneça seu nickname pelo comando /nickname <apelido desejado>"), MAX, NULL, NULL);
+        sendMessage(socket.socket, string(">> Por favor forneça seu nickname pelo comando /nickname <apelido desejado>"), MAX, NULL, NULL);
         read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
         istringstream ss(str);
@@ -137,8 +137,15 @@ static void *receiveMessage(void *arg)
             // Checando limite de caracteres e se todos são ASCII
             if (word.length() > 50 || !isASCII(word))
                 continue;
-            string aux = "Seu nick: " + word + "\n";
+            string aux = ">> Seu nick: " + word + "\n";
             sendMessage(socket.socket, aux, MAX, NULL, NULL);
+
+            // Por fim, checar se já não existe um usuário com esse nome
+            if(clientMan->checkUserName(word))
+            {
+                sendMessage(socket.socket, string(">> Nome de usuário já cadastrado!\n"), MAX, NULL, NULL);
+                continue;
+            }
             flag++;
         }
     }
@@ -153,7 +160,7 @@ static void *receiveMessage(void *arg)
     flag = 0;
     while (flag < 1)
     {
-        sendMessage(socket.socket, string("Por favor entre em uma sala pelo comando /join #<nome do canal>"), MAX, NULL, NULL);
+        sendMessage(socket.socket, string(">> Por favor entre em uma sala pelo comando /join #<nome do canal>"), MAX, NULL, NULL);
         read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
         istringstream ss(str);
@@ -166,13 +173,13 @@ static void *receiveMessage(void *arg)
             // e checando se ele possui um tamanho menor que 200 caracteres
             if (word.at(0) != '#' && word.at(0) != '&')
             {
-                cout << "Nome invalido"
+                cout << ">> Nome invalido"
                      << "/n";
                 continue;
             }
             if (word.length() >= 200)
             {
-                cout << "Nome invalido"
+                cout << ">> Nome invalido"
                      << "/n";
                 continue;
             }
@@ -184,7 +191,7 @@ static void *receiveMessage(void *arg)
             {
                 if (word.at(i) == 7 || word.at(i) == ',')
                 {
-                    cout << "Nome Invalido" << endl;
+                    cout << ">> Nome Invalido" << endl;
                     check = false;
                 }
             }
@@ -194,7 +201,7 @@ static void *receiveMessage(void *arg)
                 continue;
             }
 
-            string aux = "Você entrou no canal: " + word + "\n";
+            string aux = ">> Você entrou no canal: " + word + "\n";
             sendMessage(socket.socket, aux, MAX, NULL, NULL);
             
             flag++;
@@ -274,6 +281,7 @@ static void *receiveMessage(void *arg)
 
     // Usuário não está mais ativo
     channelMan->kickClient(client.getChannelName(), client.getNickname());
+    clientMan->removeClient(client.getNickname());
     return NULL;
 }
 
@@ -293,12 +301,12 @@ static void *acceptNewSockets(void *arg)
         args.socket = accept(serverSocket, (struct sockaddr *)&address, (socklen_t *)&addrLen);
         if (args.socket < 0)
         {
-            cout << "Erro ao aceitar conexão!" << endl;
+            cout << ">> Erro ao aceitar conexão!" << endl;
             exit(0);
         }
         else
         {
-            cout << "Cliente aceito..." << endl
+            cout << ">> Cliente aceito..." << endl
                  << endl;
         }
         // Pegar o IP do novo socket conectado
@@ -364,12 +372,12 @@ int main()
     // Criação do socket
     if ((serverSocket = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     {
-        cout << "Falha ao criar socket!" << endl;
+        cout << ">> Falha ao criar socket!" << endl;
         exit(0);
     }
     else
     {
-        cout << "Socket criado com sucesso!" << endl;
+        cout << ">> Socket criado com sucesso!" << endl;
     }
 
     // Associando IP e Porta para o servidor
@@ -380,24 +388,24 @@ int main()
     // Associar o socket criado com o IP
     if ((bind(serverSocket, (struct sockaddr *)&address, sizeof(address))) != 0)
     {
-        cout << "Erro ao associar o socket criado com o IP definido!" << endl;
+        cout << ">> Erro ao associar o socket criado com o IP definido!" << endl;
         exit(0);
     }
     else
     {
-        cout << "O socket foi associado ao IP definido com sucesso!" << endl;
+        cout << ">> O socket foi associado ao IP definido com sucesso!" << endl;
     }
 
     // Agora, o servidor irá escutar por novas coneções
     // Até 5 conexões pendentes
     if ((listen(serverSocket, 5)) < 0)
     {
-        cout << "Erro ao escutar na porta definida!" << endl;
+        cout << ">> Erro ao escutar na porta definida!" << endl;
         exit(0);
     }
     else
     {
-        cout << "Escutando por conexões na porta definida..." << endl;
+        cout << ">> Escutando por conexões na porta definida..." << endl;
     }
     addrLen = sizeof(address);
 

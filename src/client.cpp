@@ -116,8 +116,6 @@ static void *receiveMessage(void *arg)
                 break;
             }
 
-            cout << ">> ";
-
             // Checar se há as flags de fim de mensagem, se não houver a mensagem é maior do que 4096 e será dividida em várias
             if (rmBuffer[MAX - 1] == '\n' && rmBuffer[MAX - 2] == '\r')
             {
@@ -245,9 +243,9 @@ int main()
     inet_aton(SERVERIP, &(address.sin_addr));
 
     // Aguardar o comando /connect para se conectar ao servidor
-    cout << "Para se conectar ao servidor utilize o comando /connect" << endl;
     while (true)
     {
+        cout << "Para se conectar ao servidor utilize o comando /connect" << endl;
         rmBuffer = readLine(stdin);
         if (strcmp("/connect", rmBuffer) == 0)
         {

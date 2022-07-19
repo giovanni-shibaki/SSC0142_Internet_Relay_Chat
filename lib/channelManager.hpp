@@ -10,6 +10,7 @@
 
 #include <bits/stdc++.h>
 #include "channel.hpp"
+#include "utils.hpp"
 
 // changing Library according to OS
 #ifdef _WIN32
@@ -31,14 +32,13 @@ private:
 public:
     ChannelManager()
     {
-
     }
 
     bool isChannelActive(string name)
     {
         map<string, Channel>::iterator it;
         it = channelMap.find(name);
-        if(it == channelMap.end())
+        if (it == channelMap.end())
         {
             // Não achou o canal
             return false;
@@ -55,6 +55,12 @@ public:
     void insertClientChannel(string channelName, Client *client)
     {
         channelMap.at(channelName).insertClient(client);
+
+        // Mandar mensagem para todos os clientes conectados
+        for (Client *c : channelMap.at(channelName).getClients())
+        {
+            sendMessage(c->getSocketNumber(), string(client->getNickname()+" entrou no canal!\n"), MAX, &channelMap.at(channelName), c);
+        }
     }
 
     Channel getChannel(string channelName)
@@ -64,7 +70,7 @@ public:
 
     bool kickClient(string channelName, string clientName)
     {
-        if(channelMap.at(channelName).removeClient(clientName))
+        if (channelMap.at(channelName).removeClient(clientName))
             return true;
         return false;
     }

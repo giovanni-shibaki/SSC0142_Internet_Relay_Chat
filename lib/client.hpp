@@ -24,6 +24,7 @@ class Client
         string channelName;
         bool isMuted;
         bool isActive;
+        bool confirm;
 
     public:
         Client()
@@ -39,6 +40,7 @@ class Client
             this->channelName = channelName;
             this->isMuted = false;
             this->isActive = true;
+            this->confirm = false;
         }
 
         string getIp()
@@ -99,6 +101,16 @@ class Client
         void setIsActive(bool flag)
         {
             this->isActive = flag;
+        }
+
+        void setConfirm(bool flag)
+        {
+            this->confirm = flag;
+        }
+
+        bool getConfirm()
+        {
+            return this->confirm;
         }
 };
 

@@ -85,10 +85,10 @@ char *readLine(FILE *stream)
 
 /**
  * @brief Função que checa se a string digitada contém apenas caracteres ASCII
- * 
- * @param s 
- * @return true 
- * @return false 
+ *
+ * @param s
+ * @return true
+ * @return false
  */
 bool isASCII(string &s)
 {
@@ -100,7 +100,7 @@ bool isASCII(string &s)
  * @brief Função utilizada para o recebimento de mensagens
  * Caso a mensagem seja maior do que 4096 será dividida e irá checar por flags de fim de mensagem
  * (no caso \\r\\n conforme consta na especificação do protocolo) para então ler e mostrar a mensagem dividida
- * 
+ *
  * Observação: Cada novo cliente conectado no servidor irá iniciar uma thread com a essa função para o recebimento de mensagens
  *
  * @param socket
@@ -123,7 +123,8 @@ static void *receiveMessage(void *arg)
 
     while (flag < 1)
     {
-        sendMessage(socket.socket, string(">> Por favor forneça seu nickname pelo comando /nickname <apelido desejado>"), MAX, NULL, NULL);
+        send(socket.socket, ">> Por favor forneça seu nickname pelo comando /nickname <apelido desejado>", MAX, MSG_NOSIGNAL);
+        read(socket.socket, rmBuffer, MAX); // Confirmação
         read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
         istringstream ss(str);
@@ -136,12 +137,14 @@ static void *receiveMessage(void *arg)
             if (word.length() > 50 || !isASCII(word))
                 continue;
             string aux = ">> Seu nick: " + word + "\n";
-            sendMessage(socket.socket, aux, MAX, NULL, NULL);
+            send(socket.socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+            read(socket.socket, rmBuffer, MAX); // Confirmação
 
             // Por fim, checar se já não existe um usuário com esse nome
-            if(clientMan->checkUserName(word))
+            if (clientMan->checkUserName(word))
             {
-                sendMessage(socket.socket, string(">> Nome de usuário já cadastrado!\n"), MAX, NULL, NULL);
+                send(socket.socket, ">> Nome de usuário já cadastrado!\n", MAX, MSG_NOSIGNAL);
+                read(socket.socket, rmBuffer, MAX); // Confirmação
                 continue;
             }
             flag++;
@@ -158,7 +161,8 @@ static void *receiveMessage(void *arg)
     flag = 0;
     while (flag < 1)
     {
-        sendMessage(socket.socket, string(">> Por favor entre em uma sala pelo comando /join #<nome do canal>"), MAX, NULL, NULL);
+        send(socket.socket, ">> Por favor entre em uma sala pelo comando /join #<nome do canal>", MAX, MSG_NOSIGNAL);
+        read(socket.socket, rmBuffer, MAX); // Confirmação
         read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
         istringstream ss(str);
@@ -200,8 +204,9 @@ static void *receiveMessage(void *arg)
             }
 
             string aux = ">> Você entrou no canal: " + word + "\n";
-            sendMessage(socket.socket, aux, MAX, NULL, NULL);
-            
+            send(socket.socket, aux.c_str(), MAX, MSG_NOSIGNAL);
+            read(socket.socket, rmBuffer, MAX); // Confirmação
+
             flag++;
         }
     }
@@ -226,10 +231,33 @@ static void *receiveMessage(void *arg)
     {
         // Aloca o buffer para receber a mensagem
         rmBuffer = (char *)malloc(MAX * sizeof(char));
+        int confirmCheck = 0;
 
         while (true)
         {
             int ret = read(socket.socket, rmBuffer, MAX);
+
+            string word;
+            istringstream ss(rmBuffer);
+            ss >> word;
+            if (strcmp("<msgConfirm>", word.c_str()) == 0)
+            {
+                confirmCheck = 0;
+                continue;
+            }
+            else
+            {
+                confirmCheck++;
+                if (confirmCheck > 4)
+                {
+                    // Não recebeu confirmação em 5 mensagens, desconectar usuário
+                    cout << "Falha ao enviar mensagem, desconectando cliente: " << client.getNickname() << endl;
+                    free(rmBuffer);
+                    rmBuffer = NULL;
+                    client.setIsActive(false);
+                    break;
+                }
+            }
 
             // Caso o servidor/cliente enviar o comando /exit
             // O retorno do comando read() terá o código 0
@@ -258,7 +286,7 @@ static void *receiveMessage(void *arg)
                         // Se houver, comando inválido, não fazer nada
                         continue;
                     }
-                    sendMessage(socket.socket, string("Pong"), MAX, NULL, NULL);
+                    send(socket.socket, ">> Pong", MAX, MSG_NOSIGNAL);
                     flag++;
                 }
                 msg = msg + "\n";
@@ -278,16 +306,18 @@ static void *receiveMessage(void *arg)
     }
 
     // Usuário não está mais ativo
+    cout << "Removendo usuario " << client.getNickname() << endl;
     channelMan->kickClient(client.getChannelName(), client.getNickname());
     clientMan->removeClient(client.getNickname());
+    close(client.getSocketNumber());
     return NULL;
 }
 
 /**
  * @brief Função que aceita a conexão de novos clientes
  * Roda em um thread única, criando as threads de cada cliente que entra
- * @param arg 
- * @return void* 
+ * @param arg
+ * @return void*
  */
 static void *acceptNewSockets(void *arg)
 {

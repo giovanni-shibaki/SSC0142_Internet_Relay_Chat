@@ -9,8 +9,10 @@
 #define CHANNEL_MANAGER_H
 
 #include <bits/stdc++.h>
+#include <sys/socket.h>
 #include "channel.hpp"
-#include "utils.hpp"
+
+#define MAX 4096
 
 using namespace std;
 
@@ -51,7 +53,8 @@ public:
         // Mandar mensagem para todos os clientes conectados
         for (Client *c : channelMap.at(channelName).getClients())
         {
-            sendMessage(c->getSocketNumber(), string(client->getNickname() + " entrou no canal!\n"), MAX, &channelMap.at(channelName), c);
+            string aux = client->getNickname() + " entrou no canal!\n";
+            send(c->getSocketNumber(), aux.c_str(), MAX, MSG_NOSIGNAL);
         }
     }
 
@@ -68,7 +71,8 @@ public:
             // Mandar mensagem para todos os clientes conectados
             for (Client *c : channelMap.at(channelName).getClients())
             {
-                sendMessage(c->getSocketNumber(), string(clientName + " saiu no canal!\n"), MAX, &channelMap.at(channelName), c);
+                string aux = clientName + " saiu no canal!\n";
+                send(c->getSocketNumber(), aux.c_str(), MAX, MSG_NOSIGNAL);
             }
             return true;
         }

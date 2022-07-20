@@ -17,7 +17,6 @@
 #include <bits/stdc++.h>
 #include "message.hpp"
 #include "channelManager.hpp"
-#include "utils.hpp"
 
 using namespace std;
 
@@ -71,10 +70,9 @@ static void *messageConsumer(void *arg)
                                 {
                                     // Enviar a mensagem para o usuário
                                     int socket = c->getSocketNumber();
-                                    sendMessage(socket, string(">> Você foi desconectado do servidor!\n"), MAX, &ch, c);
+                                    send(socket, ">> Você foi desconectado do servidor!\n", MAX, MSG_NOSIGNAL);
                                     
                                     // Remover o usuário da sala
-                                    close(socket);
                                     c->setIsActive(false);
                                     flag = true;
                                     break;
@@ -82,12 +80,12 @@ static void *messageConsumer(void *arg)
                             }
                             if (!flag)
                             {
-                                sendMessage(msg.getClient()->getSocketNumber(), string(">> Usuário não encontrado!\n"), MAX, &ch, msg.getClient());
+                                send(msg.getClient()->getSocketNumber(), ">> Usuário não encontrado!\n", MAX, MSG_NOSIGNAL);
                             }
                         }
                         else
                         {
-                            sendMessage(msg.getClient()->getSocketNumber(), string(">> Faltou algum argumento, comando inválido!\n"), MAX, &ch, msg.getClient());
+                            send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
                         break;
                     case 'm':
@@ -102,7 +100,7 @@ static void *messageConsumer(void *arg)
                                     // Se o usuário já está mutado
                                     if (c->getIsMuted())
                                     {
-                                        sendMessage(msg.getClient()->getSocketNumber(), string(">> O usuário já se encontra mutado!\n"), MAX, &ch, msg.getClient());
+                                        send(msg.getClient()->getSocketNumber(), ">> O usuário já se encontra mutado!\n", MAX, MSG_NOSIGNAL);
                                         flag = true;
                                         break;
                                     }
@@ -110,19 +108,19 @@ static void *messageConsumer(void *arg)
                                     // Enviar a mensagem para o usuário
                                     int socket = c->getSocketNumber();
                                     c->mute();
-                                    sendMessage(socket, string(">> Você foi mutado pelo administrador do canal!\n"), MAX, &ch, c);
+                                    send(socket, ">> Você foi mutado pelo administrador do canal!\n", MAX, MSG_NOSIGNAL);
                                     flag = true;
                                     break;
                                 }
                             }
                             if (!flag)
                             {
-                                sendMessage(msg.getClient()->getSocketNumber(), string(">> Usuário não encontrado!\n"), MAX, &ch, msg.getClient());
+                                send(msg.getClient()->getSocketNumber(), ">> Usuário não encontrado!\n", MAX, MSG_NOSIGNAL);
                             }
                         }
                         else
                         {
-                            sendMessage(msg.getClient()->getSocketNumber(), string(">> Faltou algum argumento, comando inválido!\n"), MAX, &ch, msg.getClient());
+                            send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
                         break;
                     case 'u':
@@ -138,7 +136,7 @@ static void *messageConsumer(void *arg)
                                     // Se o usuário já está desmutado
                                     if (!c->getIsMuted())
                                     {
-                                        sendMessage(msg.getClient()->getSocketNumber(), string(">> O usuário já se encontra desmutado!\n"), MAX, &ch, msg.getClient());
+                                        send(msg.getClient()->getSocketNumber(), ">> O usuário já se encontra desmutado!\n", MAX, MSG_NOSIGNAL);
                                         flag = true;
                                         break;
                                     }
@@ -146,19 +144,19 @@ static void *messageConsumer(void *arg)
                                     // Enviar a mensagem para o usuário
                                     int socket = c->getSocketNumber();
                                     c->unmute();
-                                    sendMessage(socket, string(">> Você foi desmutado pelo administrador do canal!\n"), MAX, &ch, c);
+                                    send(socket, ">> Você foi desmutado pelo administrador do canal!\n", MAX, MSG_NOSIGNAL);
                                     flag = true;
                                     break;
                                 }
                             }
                             if (!flag)
                             {
-                                sendMessage(msg.getClient()->getSocketNumber(), string(">> Usuário não encontrado!\n"), MAX, &ch, msg.getClient());
+                                send(msg.getClient()->getSocketNumber(), ">> Usuário não encontrado!\n", MAX, MSG_NOSIGNAL);
                             }
                         }
                         else
                         {
-                            sendMessage(msg.getClient()->getSocketNumber(), string(">> Faltou algum argumento, comando inválido!\n"), MAX, &ch, msg.getClient());
+                            send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
                         break;
                     case 'w':
@@ -173,30 +171,30 @@ static void *messageConsumer(void *arg)
                                 {
                                     // Enviar a mensagem para o usuário
                                     string aux = "Ip de " + c->getNickname() + " é: " + c->getIp() + "\n";
-                                    sendMessage(msg.getClient()->getSocketNumber(), aux, MAX, &ch, msg.getClient());
+                                    send(msg.getClient()->getSocketNumber(), aux.c_str(), MAX, MSG_NOSIGNAL);
                                     flag = true;
                                     break;
                                 }
                             }
                             if (!flag)
                             {
-                                sendMessage(msg.getClient()->getSocketNumber(), string(">> Usuário não encontrado!\n"), MAX, &ch, msg.getClient());
+                                send(msg.getClient()->getSocketNumber(), ">> Usuário não encontrado!\n", MAX, MSG_NOSIGNAL);
                             }
                         }
                         else
                         {
-                            sendMessage(msg.getClient()->getSocketNumber(), string(">> Faltou algum argumento, comando inválido!\n"), MAX, &ch, msg.getClient());
+                            send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
                         break;
                     default:
-                        sendMessage(msg.getClient()->getSocketNumber(), string(">> Comando iválido!\n"), MAX, &ch, msg.getClient());
+                        send(msg.getClient()->getSocketNumber(), ">> Comando iválido!\n", MAX, MSG_NOSIGNAL);
                         break;
                     }
                 }
                 else
                 {
                     // Não pode realizar os comandos caso não seja administrador
-                    sendMessage(msg.getClient()->getSocketNumber(), string(">> Comando disponível apenas para o administrador do canal!\n"), MAX, &ch, msg.getClient());
+                    send(msg.getClient()->getSocketNumber(), ">> Comando disponível apenas para o administrador do canal!\n", MAX, MSG_NOSIGNAL);
                 }
             }
             else
@@ -205,7 +203,7 @@ static void *messageConsumer(void *arg)
                 if (msg.getClient()->getIsMuted())
                 {
                     // Se estiver mutado apenas avisa que ele está mutado e não faz nada
-                    sendMessage(msg.getClient()->getSocketNumber(), string(">> Você está mutado!\n"), MAX, &ch, msg.getClient());
+                    send(msg.getClient()->getSocketNumber(), ">> Você está mutado!\n", MAX, MSG_NOSIGNAL);
                 }
                 else
                 {
@@ -218,7 +216,7 @@ static void *messageConsumer(void *arg)
                         // Enviar a mensagem para o usuário
                         int socket = c->getSocketNumber();
                         string aux = msg.getClient()->getNickname() + ": " + msg.getMessage();
-                        sendMessage(socket, aux, MAX, &ch, c);
+                        send(socket, aux.c_str(), MAX, MSG_NOSIGNAL);
                     }
                 }
             }

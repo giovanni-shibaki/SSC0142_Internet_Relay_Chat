@@ -57,7 +57,7 @@ Para executar o cliente e o servidor, basta utilizar os comandos abaixo:
 Abaixo, a lista de comandos para todos os usuários:
 
 - Connect (/connect):
-    - Usado para se conectar ao servidor logo no inicio
+    - Usado para se conectar ao servidor logo no Início.
 - Quit (/quit):
     - Usado para se desconectar do servidor
 - Ping (/ping):

@@ -17,8 +17,8 @@ FLAGS2 = -Werror -Wall -Wextra -Wpedantic -Wpointer-arith -O3 -march=native
 VFLAGS= --leak-check=full --show-leak-kinds=all --track-origins=yes
 
 all:
-	@gcc -pthread $(FLAGS) $(CLIENT_MAIN) $(LIB) -o $(CLIENT_BINARY) -lm -I src/ -I lib/ -lstdc++
-	@gcc -pthread $(FLAGS) $(SERVER_MAIN) $(LIB) -o $(SERVER_BINARY) -lm -I src/ -I lib/ -lstdc++
+	@gcc -pthread $(FLAGS) $(CLIENT_MAIN) $(LIB) -o $(CLIENT_BINARY) -lm -I src/ -I lib/ -lstdc++ -g
+	@gcc -pthread $(FLAGS) $(SERVER_MAIN) $(LIB) -o $(SERVER_BINARY) -lm -I src/ -I lib/ -lstdc++ -g
 run_client:
 	./$(CLIENT_BINARY)
 run_server:

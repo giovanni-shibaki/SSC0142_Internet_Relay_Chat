@@ -161,7 +161,12 @@ static void *receiveMessage(void *arg)
     flag = 0;
     while (flag < 1)
     {
-        send(socket.socket, ">> Por favor entre em uma sala pelo comando /join #<nome do canal>", MAX, MSG_NOSIGNAL);
+        int ret = send(socket.socket, ">> Por favor entre em uma sala pelo comando /join #<nome do canal>", MAX, MSG_NOSIGNAL);
+        if (ret == -1)
+        {
+            client.setIsActive(false);
+            break;
+        }
         read(socket.socket, rmBuffer, MAX); // Confirmação
         read(socket.socket, rmBuffer, MAX);
         str = string(rmBuffer);
@@ -214,17 +219,20 @@ static void *receiveMessage(void *arg)
     rmBuffer = NULL;
 
     // Colocar o cliente em uma sala
-    if (!channelMan->isChannelActive(word))
+    if (client.getIsActive())
     {
-        // Canal não existe, criar o canal e adicionar o cliente nele
-        channelMan->createChannel(word, &client);
-        client.setChannelName(word);
-    }
-    else
-    {
-        // Canal já existe, colocar o cliente nele
-        channelMan->insertClientChannel(word, &client);
-        client.setChannelName(word);
+        if (!channelMan->isChannelActive(word))
+        {
+            // Canal não existe, criar o canal e adicionar o cliente nele
+            channelMan->createChannel(word, &client);
+            client.setChannelName(word);
+        }
+        else
+        {
+            // Canal já existe, colocar o cliente nele
+            channelMan->insertClientChannel(word, &client);
+            client.setChannelName(word);
+        }
     }
 
     while (client.getIsActive())
@@ -236,6 +244,12 @@ static void *receiveMessage(void *arg)
         while (true)
         {
             int ret = read(socket.socket, rmBuffer, MAX);
+
+            if(ret == -1)
+            {
+                client.setIsActive(false);
+                break;
+            }
 
             string word;
             istringstream ss(rmBuffer);
@@ -252,8 +266,6 @@ static void *receiveMessage(void *arg)
                 {
                     // Não recebeu confirmação em 5 mensagens, desconectar usuário
                     cout << "Falha ao enviar mensagem, desconectando cliente: " << client.getNickname() << endl;
-                    free(rmBuffer);
-                    rmBuffer = NULL;
                     client.setIsActive(false);
                     break;
                 }

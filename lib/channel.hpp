@@ -42,6 +42,7 @@ class Channel
         void insertClient(Client *c)
         {
             clients.push_back(c);
+            cout << "Numero de clientes: " << clients.end() - clients.begin() << endl;
         }
 
         bool removeClient(string clientName)

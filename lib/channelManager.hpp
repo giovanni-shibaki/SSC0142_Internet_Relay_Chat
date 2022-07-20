@@ -65,18 +65,27 @@ public:
 
     bool kickClient(string channelName, string clientName)
     {
-        if (channelMap.at(channelName).removeClient(clientName))
+        try
         {
-            // Usuário removido do canal
-            // Mandar mensagem para todos os clientes conectados
-            for (Client *c : channelMap.at(channelName).getClients())
+            Channel ch = channelMap.at(channelName);
+            if (channelMap.at(channelName).removeClient(clientName))
             {
-                string aux = clientName + " saiu no canal!\n";
-                send(c->getSocketNumber(), aux.c_str(), MAX, MSG_NOSIGNAL);
+                // Usuário removido do canal
+                // Mandar mensagem para todos os clientes conectados
+                for (Client *c : ch.getClients())
+                {
+                    string aux = clientName + " saiu no canal!\n";
+                    send(c->getSocketNumber(), aux.c_str(), MAX, MSG_NOSIGNAL);
+                }
+                return true;
             }
-            return true;
+            return false;
         }
-        return false;
+        catch (const out_of_range& err)
+        {
+            cout << "Erro ao remover usuário" << endl;
+            return false;
+        }
     }
 };
 

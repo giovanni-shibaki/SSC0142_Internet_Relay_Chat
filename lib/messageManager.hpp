@@ -57,9 +57,8 @@ static void *messageConsumer(void *arg)
                     // Pegar a primeira palavra
                     istringstream ss(msg.getMessage());
                     ss >> word;
-                    switch (word[1])
+                    if (strcmp("/kick", word) == 0)
                     {
-                    case 'k':
                         // Kick command
                         if (ss >> word)
                         {
@@ -71,7 +70,7 @@ static void *messageConsumer(void *arg)
                                     // Enviar a mensagem para o usuário
                                     int socket = c->getSocketNumber();
                                     send(socket, ">> Você foi desconectado do servidor!\n", MAX, MSG_NOSIGNAL);
-                                    
+
                                     // Remover o usuário da sala
                                     c->setIsActive(false);
                                     flag = true;
@@ -88,7 +87,9 @@ static void *messageConsumer(void *arg)
                             send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
                         break;
-                    case 'm':
+                    }
+                    else if (strcmp("/mute", word) == 0)
+                    {
                         // Mute command
                         if (ss >> word)
                         {
@@ -123,7 +124,9 @@ static void *messageConsumer(void *arg)
                             send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
                         break;
-                    case 'u':
+                    }
+                    else if (strcmp("/unmute", word) == 0)
+                    {
                         // Unmute command
                         if (ss >> word)
                         {
@@ -158,8 +161,9 @@ static void *messageConsumer(void *arg)
                         {
                             send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
-                        break;
-                    case 'w':
+                    }
+                    else if (strcmp("/whois", word) == 0)
+                    {
                         // Whois command
                         if (ss >> word)
                         {
@@ -185,10 +189,18 @@ static void *messageConsumer(void *arg)
                         {
                             send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
-                        break;
-                    default:
+                    }
+                    else if (strcmp("/invite", word) == 0)
+                    {
+                        // Invite Command
+                    }
+                    else if (strcmp("/mode", word) == 0)
+                    {
+                        // Mode Command
+                    } else
+                    {
+                        // Nenhum comando encontrado
                         send(msg.getClient()->getSocketNumber(), ">> Comando iválido!\n", MAX, MSG_NOSIGNAL);
-                        break;
                     }
                 }
                 else
@@ -269,7 +281,7 @@ public:
     void recieveMessage(Client c, string msg)
     {
         // Checar se o cliente está ativo
-        if(!c.getIsActive())
+        if (!c.getIsActive())
             return;
 
         mtx.lock();

@@ -57,7 +57,7 @@ static void *messageConsumer(void *arg)
                     // Pegar a primeira palavra
                     istringstream ss(msg.getMessage());
                     ss >> word;
-                    if (strcmp("/kick", word) == 0)
+                    if ("/kick" == word)
                     {
                         // Kick command
                         if (ss >> word)
@@ -86,9 +86,8 @@ static void *messageConsumer(void *arg)
                         {
                             send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
-                        break;
                     }
-                    else if (strcmp("/mute", word) == 0)
+                    else if ("/mute" == word)
                     {
                         // Mute command
                         if (ss >> word)
@@ -123,9 +122,8 @@ static void *messageConsumer(void *arg)
                         {
                             send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
-                        break;
                     }
-                    else if (strcmp("/unmute", word) == 0)
+                    else if ("/unmute" == word)
                     {
                         // Unmute command
                         if (ss >> word)
@@ -162,7 +160,7 @@ static void *messageConsumer(void *arg)
                             send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
                     }
-                    else if (strcmp("/whois", word) == 0)
+                    else if ("/whois" == word)
                     {
                         // Whois command
                         if (ss >> word)
@@ -190,14 +188,15 @@ static void *messageConsumer(void *arg)
                             send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
                         }
                     }
-                    else if (strcmp("/invite", word) == 0)
+                    else if ("/invite" == word)
                     {
                         // Invite Command
                     }
-                    else if (strcmp("/mode", word) == 0)
+                    else if ("/mode" == word)
                     {
                         // Mode Command
-                    } else
+                    }
+                    else
                     {
                         // Nenhum comando encontrado
                         send(msg.getClient()->getSocketNumber(), ">> Comando iválido!\n", MAX, MSG_NOSIGNAL);

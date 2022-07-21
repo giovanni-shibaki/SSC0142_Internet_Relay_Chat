@@ -7,6 +7,10 @@ Projeto de desenvolvimento de um IRC em linguaguem C++ para a disciplina SSC0142
 - Lucas Keiti Anbo Mihara   Nusp: 11796472
 - Vitor Caetano Brustolin   Nusp: 11795589
 
+# Vídeo
+
+[![Vídeo de apresentação](https://img.youtube.com/vi/TCicJzLSf7o/maxresdefault.jpg)](https://youtu.be/TCicJzLSf7o)
+
 # Árvore de arquivos do projeto
 
     .

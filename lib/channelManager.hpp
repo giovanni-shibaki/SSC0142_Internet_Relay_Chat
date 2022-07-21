@@ -46,9 +46,16 @@ public:
         channelMap.insert(pair<string, Channel>(name, *newChannel));
     }
 
-    void insertClientChannel(string channelName, Client *client)
+    bool insertClientChannel(string channelName, Client *client)
     {
-        channelMap.at(channelName).insertClient(client);
+        if (channelMap.at(channelName).isClientAllowedToEnter(client->getNickname()))
+        {
+            channelMap.at(channelName).insertClient(client);
+        }
+        else
+        {
+            return false;
+        }
 
         // Mandar mensagem para todos os clientes conectados
         for (Client *c : channelMap.at(channelName).getClients())
@@ -56,6 +63,7 @@ public:
             string aux = client->getNickname() + " entrou no canal!\n";
             send(c->getSocketNumber(), aux.c_str(), MAX, MSG_NOSIGNAL);
         }
+        return true;
     }
 
     Channel getChannel(string channelName)
@@ -86,6 +94,16 @@ public:
             cout << "Erro ao remover usuário" << endl;
             return false;
         }
+    }
+
+    bool changeMode(string channelName) 
+    {
+        return channelMap.at(channelName).changeMode();
+    }
+
+    void inviteClient(string channelName, string nick)
+    {
+        channelMap.at(channelName).inviteClient(nick);
     }
 };
 

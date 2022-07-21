@@ -208,32 +208,36 @@ static void *receiveMessage(void *arg)
                 continue;
             }
 
+            // Colocar o cliente em uma sala
+            if (client.getIsActive())
+            {
+                if (!channelMan->isChannelActive(word))
+                {
+                    // Canal não existe, criar o canal e adicionar o cliente nele
+                    channelMan->createChannel(word, &client);
+                }
+                else
+                {
+                    // Canal já existe, colocar o cliente nele
+                    if (!channelMan->insertClientChannel(word, &client))
+                    {
+                        cout << ">> Cliente nao convidado para o canal" << endl;
+                        continue;
+                    }
+                }
+                client.setChannelName(word);
+            }
             string aux = ">> Você entrou no canal: " + word + "\n";
             send(socket.socket, aux.c_str(), MAX, MSG_NOSIGNAL);
             read(socket.socket, rmBuffer, MAX); // Confirmação
 
             flag++;
         }
+
     }
     free(rmBuffer);
     rmBuffer = NULL;
 
-    // Colocar o cliente em uma sala
-    if (client.getIsActive())
-    {
-        if (!channelMan->isChannelActive(word))
-        {
-            // Canal não existe, criar o canal e adicionar o cliente nele
-            channelMan->createChannel(word, &client);
-            client.setChannelName(word);
-        }
-        else
-        {
-            // Canal já existe, colocar o cliente nele
-            channelMan->insertClientChannel(word, &client);
-            client.setChannelName(word);
-        }
-    }
 
     while (client.getIsActive())
     {

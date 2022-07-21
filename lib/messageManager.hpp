@@ -191,10 +191,28 @@ static void *messageConsumer(void *arg)
                     else if ("/invite" == word)
                     {
                         // Invite Command
+                        if (ss >> word)
+                        {
+                            channelMan->inviteClient(msg.getClient()->getChannelName(), word);
+                            string aux = ">> " + word + " foi convidado para o canal\n";
+                            send(msg.getClient()->getSocketNumber(), aux.c_str(), MAX, MSG_NOSIGNAL);
+                        }
+                        else
+                        {
+                            send(msg.getClient()->getSocketNumber(), ">> Faltou algum argumento, comando inválido!\n", MAX, MSG_NOSIGNAL);
+                        }
                     }
                     else if ("/mode" == word)
                     {
                         // Mode Command
+                        if (channelMan->changeMode(msg.getClient()->getChannelName()))
+                        {
+                            send(msg.getClient()->getSocketNumber(), ">> Canal trocado para o modo privado\n", MAX, MSG_NOSIGNAL);
+                        }
+                        else
+                        {
+                            send(msg.getClient()->getSocketNumber(), ">> Canal trocado para o modo publico\n", MAX, MSG_NOSIGNAL);    
+                        }
                     }
                     else
                     {

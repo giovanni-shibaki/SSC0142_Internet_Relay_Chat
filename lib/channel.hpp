@@ -24,6 +24,8 @@ class Channel
         string adminName;
         // Cada canal contém uma lista de usuários conectados a ele
         vector<Client *> clients;
+        bool isInviteOnly;
+        vector<string> invitedClients;
 
     public:
         Channel(string name, Client *client)
@@ -32,6 +34,7 @@ class Channel
             this->name = name;
             this->clients.push_back(client);
             this->adminName = client->getNickname();
+            this->isInviteOnly = false;
         }
 
         vector<Client *> getClients()
@@ -67,6 +70,24 @@ class Channel
         string getAdminName()
         {
             return this->adminName;
+        }
+
+        void inviteClient(string nick)
+        {
+            this->invitedClients.push_back(nick);
+        }
+
+        bool isClientAllowedToEnter(string nick)
+        {
+            if (!this->isInviteOnly) return true;
+
+            return find(this->invitedClients.begin(), this->invitedClients.end(), nick) != this->invitedClients.end();
+        }
+
+        bool changeMode()
+        {
+            this->isInviteOnly = !this->isInviteOnly;
+            return this->isInviteOnly;
         }
 };
 

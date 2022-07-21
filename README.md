@@ -1,10 +1,6 @@
 # SSC0142_Internet_Relay_Chat
 Projeto de desenvolvimento de um IRC em linguaguem C++ para a disciplina SSC0142 - Redes de Computadores
 
-<html>
-	 <img src="./assets/video_chat2.gif" alt="Gif_chat"  width="600px">
-</html>
-
 # Membros
 
 - Giovanni Shibaki Camargo  Nusp: 11796444
@@ -12,6 +8,7 @@ Projeto de desenvolvimento de um IRC em linguaguem C++ para a disciplina SSC0142
 - Vitor Caetano Brustolin   Nusp: 11795589
 
 # Árvore de arquivos do projeto
+
     .
     ├── Link_para_o_GitHub.txt
     ├── Makefile
@@ -20,14 +17,15 @@ Projeto de desenvolvimento de um IRC em linguaguem C++ para a disciplina SSC0142
     │   ├── mensagemEnorme.txt
     │   ├── video_chat.gif
     │   └── video_chat2.gif
+    ├── client
     ├── lib
     │   ├── channel.hpp
     │   ├── channelManager.hpp
     │   ├── client.hpp
     │   ├── clientManager.hpp
     │   ├── message.hpp
-    │   ├── messageManager.hpp
-    │   └── utils.hpp
+    │   └── messageManager.hpp
+    ├── server
     └── src
         ├── client.cpp
         └── server.cpp
@@ -69,6 +67,7 @@ Abaixo, a lista de comandos para todos os usuários:
 - Observacao:
     - Os nomes de canal e de nickname devem obedecer uma série de regras para serem considerados válidos.
     - Alem disso o servidor faz a checagem se há dois usuarios com o mesmo nome, portanto use um nome original.
+    - Não será possível entrar em um canal caso ele esteja no modo privado e você não esteja na lista de convidados.
 
 Abaixo, a lista de comandos para os administradores de canais (são aqueles que criam o canal):
 
@@ -80,6 +79,10 @@ Abaixo, a lista de comandos para os administradores de canais (são aqueles que 
     - Esse comando faz com que o usuário silenciado possa voltar a enviar mensagens normalmente.
 - Whois (/whois \<nome do usuario>):
     - Esse comando retorna ao administrador do servidor o IP do usuário em questao.
+- Mode (/mode):
+    - Altera o modo do canal entre **privado** e **publico**.
+- Invite (/invite \<nome do usuario>):
+    - Convida o usuário em questão para o canal.
 
 # Referências
 

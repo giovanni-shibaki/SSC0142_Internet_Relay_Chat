@@ -161,7 +161,7 @@ static void *receiveMessage(void *arg)
     flag = 0;
     while (flag < 1)
     {
-        int ret = send(socket.socket, ">> Por favor entre em uma sala pelo comando /join #<nome do canal>", MAX, MSG_NOSIGNAL);
+        int ret = send(socket.socket, ">> Por favor entre em um canal pelo comando /join #<nome do canal>", MAX, MSG_NOSIGNAL);
         if (ret == -1)
         {
             client.setIsActive(false);
@@ -180,14 +180,14 @@ static void *receiveMessage(void *arg)
             // e checando se ele possui um tamanho menor que 200 caracteres
             if (word.at(0) != '#' && word.at(0) != '&')
             {
-                cout << ">> Nome invalido"
-                     << "/n";
+                send(socket.socket, ">> Nome de sala inválido!\n", MAX, MSG_NOSIGNAL);
+                read(socket.socket, rmBuffer, MAX); // Confirmação
                 continue;
             }
             if (word.length() >= 200)
             {
-                cout << ">> Nome invalido"
-                     << "/n";
+                send(socket.socket, ">> Nome de sala inválido!\n", MAX, MSG_NOSIGNAL);
+                read(socket.socket, rmBuffer, MAX); // Confirmação
                 continue;
             }
 
@@ -198,7 +198,8 @@ static void *receiveMessage(void *arg)
             {
                 if (word.at(i) == 7 || word.at(i) == ',')
                 {
-                    cout << ">> Nome Invalido" << endl;
+                    send(socket.socket, ">> Nome de sala inválido!\n", MAX, MSG_NOSIGNAL);
+                    read(socket.socket, rmBuffer, MAX); // Confirmação
                     check = false;
                 }
             }
@@ -221,7 +222,8 @@ static void *receiveMessage(void *arg)
                     // Canal já existe, colocar o cliente nele
                     if (!channelMan->insertClientChannel(word, &client))
                     {
-                        cout << ">> Cliente nao convidado para o canal" << endl;
+                        send(socket.socket, ">> Você não foi convidado para este canal!\n", MAX, MSG_NOSIGNAL);
+                        read(socket.socket, rmBuffer, MAX); // Confirmação
                         continue;
                     }
                 }

@@ -214,10 +214,15 @@ static void *messageConsumer(void *arg)
                             send(msg.getClient()->getSocketNumber(), ">> Canal trocado para o modo publico\n", MAX, MSG_NOSIGNAL);    
                         }
                     }
+                    else if("/ping" == word)
+                    {
+                        // Ping Command
+                        // É feito de forma automática na função receiveMessage() do server.cpp
+                    }
                     else
                     {
                         // Nenhum comando encontrado
-                        send(msg.getClient()->getSocketNumber(), ">> Comando iválido!\n", MAX, MSG_NOSIGNAL);
+                        send(msg.getClient()->getSocketNumber(), ">> Comando inválido!\n", MAX, MSG_NOSIGNAL);
                     }
                 }
                 else
